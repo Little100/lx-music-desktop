@@ -387,7 +387,16 @@ export const setResource = (src: string) => {
   if (audio) audio.src = src
 }
 
+const resumeAudioContext = () => {
+  if (!audioContext || audioContext.state == 'running') return
+  void audioContext.resume().catch((err) => {
+    console.error('resume AudioContext error', err)
+  })
+}
+
 export const setPlay = () => {
+  if (pitchShifterNodeLoadStatus == 'connected') connectNode()
+  resumeAudioContext()
   void audio?.play()
 }
 
