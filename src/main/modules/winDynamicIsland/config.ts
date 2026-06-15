@@ -1,4 +1,4 @@
-import { closeWindow, createWindow, isExistWindow, alwaysOnTopTools, setAlwaysOnTop, setAcrylic, relayoutCanvas } from './main'
+import { closeWindow, createWindow, isExistWindow, alwaysOnTopTools, setAlwaysOnTop, relayoutCanvas } from './main'
 import { sendConfigChange } from './rendererEvent'
 
 const watchConfigKeys: Array<keyof LX.AppSetting> = [
@@ -64,10 +64,6 @@ export const setIslandConfig = (keys: Array<keyof LX.AppSetting>, setting: Parti
       } else {
         alwaysOnTopTools.clearLoop()
       }
-    }
-
-    if (keys.includes('dynamicIsland.useAcrylic')) {
-      setAcrylic(global.lx.appSetting['dynamicIsland.useAcrylic'])
     }
   }
 

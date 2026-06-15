@@ -1,15 +1,16 @@
 <template>
-  <div
-    id="dynamic-island-container"
-    ref="dom_container"
-    :class="{ expanded: uiState.isExpanded, 'show-info': uiState.showInfo, paused: !isPlay, 'paused-dim': !isPlay && setting['dynamicIsland.pausedOpacity'], docked: uiState.isDocked }"
-    :style="containerStyle"
-  >
-    <div id="island-inner" :style="innerStyle">
-    <!-- 毛玻璃背景 -->
-    <div class="bg-layer" :style="bgStyle" />
-    <!-- Apple Music 风格: 跟随封面的氛围光背景 -->
-    <div v-if="musicInfo.pic" class="ambient-layer" :style="ambientStyle" />
+  <div id="island-stage">
+    <div
+      id="dynamic-island-container"
+      ref="dom_container"
+      :class="{ expanded: uiState.isExpanded, 'show-info': uiState.showInfo, paused: !isPlay, 'paused-dim': !isPlay && setting['dynamicIsland.pausedOpacity'], docked: uiState.isDocked }"
+      :style="containerStyle"
+    >
+      <div id="island-inner" :style="innerStyle">
+      <!-- 毛玻璃背景 -->
+      <div class="bg-layer" :style="bgStyle" />
+      <!-- Apple Music 风格: 跟随封面的氛围光背景 -->
+      <div v-if="musicInfo.pic" class="ambient-layer" :style="ambientStyle" />
 
       <!-- Dock 模式：最小化显示 -->
       <div class="dock-content" :class="{ visible: uiState.isDocked && !uiState.isExpanded }">
@@ -182,6 +183,7 @@
             </transition-group>
           </div>
       </div>
+      </div>
     </div>
   </div>
 </template>
@@ -192,7 +194,7 @@ import { parseRGBA, toRGBAString, lerpRGBA, animateColorTransition, extractColor
 import { setting, musicInfo, isPlay, uiState, lyricState, playTime, lyricLineTimes, lineProgress, nextSongInfo } from '@island/store/state'
 import { setExpanded, setShowInfo, setMouseInside, setDocked } from '@island/store/action'
 import { useEvent, getAnalyserDataArray } from '@island/core/mainWindowChannel'
-import { onMouseEnter, onMouseLeave, sendConnectMainWindowEvent, sendSetSize, sendSetDocked } from '@island/utils/ipc'
+import { onMouseEnter, onMouseLeave, sendConnectMainWindowEvent, sendReportBounds, sendSetSize } from '@island/utils/ipc'
 import { init as initLyricPlayer, reSetLyric } from '@island/core/lyric'
 
 export default {
@@ -581,39 +583,45 @@ export default {
       }
     })
 
-    // 收起态测量宽度(用具体 px 值让 width 可动画, 消除 auto 跳变)
-    const measuredCollapsedW = ref(0)
-
-    // 通知主进程调整窗口尺寸(窗口=胶囊)
-    const reportSize = () => {
-      const isExpanded = uiState.isExpanded
-      const isDocked = uiState.isDocked
-      let w = 0
-      let h = capsuleHeight.value
-      if (isExpanded) {
-        w = setting['dynamicIsland.expandedWidth'] ?? 380
-      } else if (isDocked) {
-        w = 120
-      } else {
-        w = measuredCollapsedW.value || setting['dynamicIsland.collapsedWidth'] || 280
-      }
-      sendSetSize(w, h)
+    // 上报可见容器矩形给主进程做精确鼠标命中检测
+    let reportRafId = null
+    const reportBounds = () => {
+      if (reportRafId) cancelAnimationFrame(reportRafId)
+      reportRafId = requestAnimationFrame(() => {
+        const el = dom_container.value
+        if (!el) return
+        const r = el.getBoundingClientRect()
+        sendReportBounds({
+          x: Math.round(r.left),
+          y: Math.round(r.top),
+          width: Math.round(r.width),
+          height: Math.round(r.height),
+        })
+      })
     }
 
     let resizeObserver = null
-    const startSizeReport = () => {
-      reportSize()
+    const startBoundsReport = () => {
+      const el = dom_container.value
+      if (!el) return
+      resizeObserver = new ResizeObserver(reportBounds)
+      resizeObserver.observe(el)
+      reportBounds()
     }
 
-    // 状态变化时通知主进程调整窗口尺寸
-    watch([() => uiState.isExpanded, () => uiState.isDocked, () => capsuleHeight.value, () => measuredCollapsedW.value], () => {
-      reportSize()
+    // 状态变化时持续上报(过渡动画期间也要更新命中区域)
+    watch([() => uiState.isExpanded, () => uiState.isDocked, () => uiState.showInfo, () => uiState.isMouseInside], () => {
+      // 动画期间连续上报
+      let count = 0
+      const tick = () => {
+        reportBounds()
+        if (++count < 40) requestAnimationFrame(tick)
+      }
+      tick()
     })
 
-    // dock 状态变化时通知主进程调整 y 坐标
-    watch(() => uiState.isDocked, (docked) => {
-      sendSetDocked(docked)
-    })
+    // 收起态测量宽度(用具体 px 值让 width 可动画, 消除 auto 跳变)
+    const measuredCollapsedW = ref(0)
     // 用离屏 canvas 测量文本宽度, 不受容器宽度限制
     let measureCanvas = null
     const measureTextWidth = (text, fontPx, weight) => {
@@ -628,39 +636,47 @@ export default {
       const speed = setting['dynamicIsland.animationSpeed'] || 100
       const mult = 100 / speed
       const font = setting['dynamicIsland.font'] || setting['desktopLyric.style.font']
-      return {
+      const isExpanded = uiState.isExpanded
+      const isDocked = uiState.isDocked
+      const collapsedW = setting['dynamicIsland.collapsedWidth']
+      const expandedW = setting['dynamicIsland.expandedWidth']
+      const style = {
         '--island-font': font || 'inherit',
+        '--offset-y': (setting['dynamicIsland.offsetY'] ?? 80) + 'px',
         '--anim-base': (0.5 * mult).toFixed(2) + 's',
         '--anim-mid': (0.4 * mult).toFixed(2) + 's',
         '--anim-fast': (0.28 * mult).toFixed(2) + 's',
         '--anim-color': (0.8 * mult).toFixed(2) + 's',
         '--anim-lyric': (0.45 * mult).toFixed(2) + 's',
       }
+      if (isExpanded) {
+        return { ...style, width: expandedW + 'px' }
+      }
+      if (isDocked) {
+        return { ...style, width: '120px' }
+      }
+      // 收起态: 用测量值或 collapsedW
+      const w = measuredCollapsedW.value || collapsedW
+      return { ...style, width: w + 'px' }
     })
 
     const innerStyle = computed(() => {
-      return {}
-    })
-
-    // 计算胶囊目标高度, 用于通知主进程
-    const capsuleHeight = computed(() => {
       const hasLyrics = lyricState.lines.length > 0
       const isDocked = uiState.isDocked
-      return uiState.isExpanded
+      const h = uiState.isExpanded
         ? (hasLyrics ? setting['dynamicIsland.expandedHeight'] : 80)
         : isDocked
           ? 28
           : setting['dynamicIsland.collapsedHeight']
+      return {
+        height: h + 'px',
+      }
     })
 
     const bgStyle = computed(() => {
       const opacity = setting['dynamicIsland.opacity'] / 100
-      const useAcrylic = setting['dynamicIsland.useAcrylic']
-      const blur = setting['dynamicIsland.blur'] ?? 15
       return {
         background: `rgba(18, 18, 22, ${opacity})`,
-        backdropFilter: useAcrylic ? `blur(${blur}px)` : 'none',
-        webkitBackdropFilter: useAcrylic ? `blur(${blur}px)` : 'none',
       }
     })
 
@@ -778,6 +794,7 @@ export default {
       if (uiState.isExpanded || uiState.isDocked) return
       const w = computeCollapsedWidth()
       measuredCollapsedW.value = w
+      sendSetSize(w, 0)
     }
     watch([
       () => musicInfo.name,
@@ -873,7 +890,7 @@ export default {
       initLyricPlayer()
       initVisCanvas()
       sendConnectMainWindowEvent()
-      startSizeReport()
+      startBoundsReport()
       if (isPlay.value) {
         handlePlay()
         startTimeInterpolation()
@@ -909,6 +926,7 @@ export default {
       handlePause()
       stopTimeInterpolation()
       if (resizeObserver) resizeObserver.disconnect()
+      if (reportRafId) cancelAnimationFrame(reportRafId)
       if (hoverTimer) clearTimeout(hoverTimer)
       if (leaveTimer) clearTimeout(leaveTimer)
       if (infoHideTimer) clearTimeout(infoHideTimer)
@@ -983,29 +1001,45 @@ body {
   font-family: inherit;
 }
 
+/* 全屏画布: 灵动岛在顶部居中, dock 时贴顶, 正常时下移 offsetY */
+#island-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
 /* ═══ 容器 ═══ */
 #dynamic-island-container {
   position: relative;
-  width: 100%;
-  height: 100%;
+  pointer-events: auto;
+  /* 顶部偏移由 transform 控制, dock 时归零, 弹性过渡 */
+  transform: translateY(var(--offset-y, 80px));
   transition: width var(--anim-base, 0.5s) cubic-bezier(0.34, 1.25, 0.4, 1),
               min-width var(--anim-base, 0.5s) cubic-bezier(0.34, 1.25, 0.4, 1),
-              max-width var(--anim-base, 0.5s) cubic-bezier(0.34, 1.25, 0.4, 1);
-  will-change: width;
+              max-width var(--anim-base, 0.5s) cubic-bezier(0.34, 1.25, 0.4, 1),
+              transform var(--anim-mid, 0.4s) cubic-bezier(0.34, 1.25, 0.4, 1);
+  will-change: width, transform;
+}
+
+#dynamic-island-container.docked {
+  transform: translateY(0);
 }
 
 #island-inner {
   position: relative;
-  width: 100%;
-  height: 100%;
   border-radius: 24px;
   overflow: hidden;
   font-family: var(--island-font, inherit);
-  transition: border-radius var(--anim-base, 0.5s) cubic-bezier(0.34, 1.25, 0.4, 1),
+  /* 高度与圆角同步弹性过渡, 营造 iOS 形变质感 */
+  transition: height var(--anim-base, 0.5s) cubic-bezier(0.34, 1.25, 0.4, 1),
+              border-radius var(--anim-base, 0.5s) cubic-bezier(0.34, 1.25, 0.4, 1),
               opacity var(--anim-mid, 0.4s) ease,
               box-shadow var(--anim-mid, 0.4s) ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  will-change: opacity;
+  will-change: height, opacity;
 }
 
 .expanded #island-inner {
