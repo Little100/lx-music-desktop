@@ -1,7 +1,7 @@
 import { mainOn, mainHandle } from '@common/mainIpc'
 import { WIN_DYNAMIC_ISLAND_RENDERER_EVENT_NAME } from '@common/ipcNames'
 import { sendNewDesktopLyricClient } from '@main/modules/winMain'
-import { getMainFrame, sendEvent, setVisibleRect, ensureCanvasWidth } from './main'
+import { getMainFrame, sendEvent, resizeToCapsule, setDocked as setDockedPosition } from './main'
 import { MessageChannelMain } from 'electron'
 
 export default () => {
@@ -13,15 +13,20 @@ export default () => {
     global.lx.event_app.update_config(config)
   })
 
-  // 渲染器上报可见容器矩形(相对窗口), 主进程据此做精确鼠标命中检测
-  mainOn<{ x: number, y: number, width: number, height: number } | null>(WIN_DYNAMIC_ISLAND_RENDERER_EVENT_NAME.report_bounds, ({ params }) => {
-    setVisibleRect(params)
+  // 渲染器上报胶囊实际尺寸, 主进程调整窗口大小并居中
+  mainOn<{ width: number, height: number }>(WIN_DYNAMIC_ISLAND_RENDERER_EVENT_NAME.set_size, ({ params }) => {
+    if (params && typeof params.width === 'number' && typeof params.height === 'number') {
+      resizeToCapsule(params.width, params.height)
+    }
   })
 
-  // 渲染器请求的胶囊宽度, 超出基础画布时拉伸窗口
-  mainOn<{ width: number }>(WIN_DYNAMIC_ISLAND_RENDERER_EVENT_NAME.set_size, ({ params }) => {
-    if (params && typeof params.width === 'number') ensureCanvasWidth(params.width)
+  // 渲染器通知 dock 状态变化
+  mainOn<boolean>(WIN_DYNAMIC_ISLAND_RENDERER_EVENT_NAME.set_docked, ({ params }) => {
+    if (typeof params === 'boolean') setDockedPosition(params)
   })
+
+  // report_bounds 在新架构下不再需要复杂偏移, 保留兼容
+  mainOn(WIN_DYNAMIC_ISLAND_RENDERER_EVENT_NAME.report_bounds, () => {})
 
   mainOn(WIN_DYNAMIC_ISLAND_RENDERER_EVENT_NAME.request_main_window_channel, ({ event }) => {
     if (event.senderFrame !== getMainFrame()) return
