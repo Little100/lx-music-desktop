@@ -675,8 +675,12 @@ export default {
 
     const bgStyle = computed(() => {
       const opacity = setting['dynamicIsland.opacity'] / 100
+      const useAcrylic = setting['dynamicIsland.useAcrylic']
+      const blur = setting['dynamicIsland.blur'] ?? 15
       return {
         background: `rgba(18, 18, 22, ${opacity})`,
+        backdropFilter: useAcrylic ? `blur(${blur}px)` : 'none',
+        webkitBackdropFilter: useAcrylic ? `blur(${blur}px)` : 'none',
       }
     })
 

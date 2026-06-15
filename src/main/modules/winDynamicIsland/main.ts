@@ -145,6 +145,8 @@ export const createWindow = () => {
 
   const { shouldUseDarkColors, theme } = global.lx.theme
 
+  const useAcrylic = global.lx.appSetting['dynamicIsland.useAcrylic'] ?? true
+
   browserWindow = new BrowserWindow({
     width,
     height,
@@ -162,6 +164,8 @@ export const createWindow = () => {
     show: false,
     alwaysOnTop: isAlwaysOnTop,
     skipTaskbar: true,
+    backgroundColor: '#00000000',
+    backgroundMaterial: useAcrylic ? 'acrylic' : 'none',
     webPreferences: {
       contextIsolation: false,
       webSecurity: false,
@@ -233,4 +237,9 @@ export const getWindow = () => browserWindow
 export const setAlwaysOnTop = (flag: boolean) => {
   if (!browserWindow) return
   browserWindow.setAlwaysOnTop(flag, 'screen-saver')
+}
+
+export const setAcrylic = (enable: boolean) => {
+  if (!browserWindow) return
+  browserWindow.setBackgroundMaterial(enable ? 'acrylic' : 'none')
 }
