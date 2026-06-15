@@ -4,7 +4,11 @@
       <base-tab v-model="source" :class="$style.tab" :list="tabs" />
       <div class="scroll" :class="$style.list">
         <template v-if="list.length">
-          <div v-for="item in list" :key="item.id" :class="$style.listItem">
+          <div
+            v-for="item in list" :key="item.id"
+            :class="[$style.listItem, { [$style.selected]: toggleMusicInfo && toggleMusicInfo.id == item.id }]"
+            @click="handleSelect(item)"
+          >
             <!-- <div :class="$style.num">{{ index + 1 }}</div> -->
             <div :class="$style.textContent">
               <h3 :class="$style.text" :aria-label="`${item.name} - ${item.singer}`">{{ item.name }}</h3>
@@ -15,10 +19,10 @@
             </div>
             <div :class="$style.label">{{ item.interval }}</div>
             <div :class="$style.btns">
-              <button type="button" :class="$style.btn" @click="openDetail(item)">
+              <button type="button" :class="$style.btn" @click.stop="openDetail(item)">
                 <svg-icon name="share" />
               </button>
-              <button type="button" :class="$style.btn" @click="handlePlay(item)">
+              <button type="button" :class="$style.btn" @click.stop="handlePlay(item)">
                 <svg v-once version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="50%" viewBox="0 0 287.386 287.386" space="preserve">
                   <use xlink:href="#icon-testPlay" />
                 </svg>
@@ -155,6 +159,9 @@ export default {
       if (!url) return
       void openUrl(url)
     },
+    handleSelect(musicInfo) {
+      this.toggleMusicInfo = musicInfo
+    },
     handlePlay(musicInfo) {
       this.toggleMusicInfo = musicInfo
       const isPlaying = !!playMusicInfo.musicInfo
@@ -207,9 +214,13 @@ export default {
     flex-flow: row nowrap;
     align-items: center;
     border-radius: 4px;
+    cursor: pointer;
 
     &:hover {
       background-color: var(--color-primary-background-hover);
+    }
+    &.selected {
+      background-color: var(--color-primary-background-active);
     }
     // &:last-child {
     //   border-bottom-left-radius: 4px;

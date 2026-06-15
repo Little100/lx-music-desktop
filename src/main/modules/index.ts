@@ -4,6 +4,8 @@ import registerHotKey from './hotKey'
 import registerTray from './tray'
 import registerAppMenu from './appMenu'
 import registerWinLyric from './winLyric'
+import registerWinAchievement from './winAchievement'
+import registerWinDynamicIsland from './winDynamicIsland'
 import registerCommonRenderers from './commonRenderers'
 
 let isRegistered = false
@@ -16,5 +18,7 @@ export default () => {
   registerTray()
   registerAppMenu()
   registerWinLyric()
+  registerWinAchievement()
+  registerWinDynamicIsland()
   isRegistered = true
 }

@@ -37,6 +37,18 @@ export const setting = shallowReactive<LX.DesktopLyric.Config>({
   'player.isSwapLyricTranslationAndRoma': false,
   'player.isPlayLxlrc': false,
   'player.playbackRate': 1,
+  'player.audioVisualization': false,
+  'player.audioVisualization.fftSize': 1024,
+  'player.audioVisualization.smoothing': 80,
+  'player.audioVisualization.heightScale': 40,
+  'player.audioVisualization.opacity': 80,
+  'player.audioVisualization.showBars': true,
+  'player.audioVisualization.showWave': false,
+  'player.audioVisualization.useLogScale': true,
+  'player.audioVisualization.amplitudeScale': 100,
+  'player.audioVisualization.barCount': 128,
+  'player.audioVisualization.barWidth': 0,
+  'player.audioVisualization.centerMirror': false,
 })
 
 // export const themeList = markRaw([

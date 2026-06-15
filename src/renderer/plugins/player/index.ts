@@ -80,6 +80,15 @@ export const createAudio = () => {
 const initAnalyser = () => {
   analyser = audioContext.createAnalyser()
   analyser.fftSize = 256
+  // 降低时间平滑常数，让频谱数据更灵敏（默认0.8太平滑）
+  analyser.smoothingTimeConstant = 0.6
+}
+
+export const setAnalyserFftSize = (size: number) => {
+  if (!analyser) return
+  const validSizes = [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+  if (!validSizes.includes(size)) return
+  analyser.fftSize = size
 }
 
 const initBiquadFilter = () => {

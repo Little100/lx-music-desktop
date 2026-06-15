@@ -1,0 +1,3 @@
+once_cell::imp::OnceCell<Arc<parking_lot::lock_api::Mutex<parking_lot::RawMutex, Option<VisualizerState>>>>
+once_cell::sync::OnceCell<Arc<parking_lot::lock_api::Mutex<parking_lot::RawMutex, Option<VisualizerState>>>>
+once_cell::sync::Lazy<Arc<parking_lot::lock_api::Mutex<parking_lot::RawMutex, Option<VisualizerState>>>>

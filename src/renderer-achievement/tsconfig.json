@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "paths": {
+      "@common/*": ["common/*"],
+      "@achievement/*": ["renderer-achievement/*"],
+      "@static/*": ["static/*"],
+      "@root/*": ["./*"]
+    }
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.d.ts",
+    "./**/*.vue",
+    "../common/types/**/*.d.ts"
+  ]
+}

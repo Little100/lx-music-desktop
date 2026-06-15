@@ -1,5 +1,5 @@
 import Lyric from '@common/utils/lyric-font-player'
-import { getAnalyser, getCurrentTime as getPlayerCurrentTime } from '@renderer/plugins/player'
+import { getAnalyser, getCurrentTime as getPlayerCurrentTime, getDuration } from '@renderer/plugins/player'
 import { lyric, setLines, setOffset, setTempOffset, setText } from '@renderer/store/player/lyric'
 import { isPlay, musicInfo } from '@renderer/store/player/state'
 import { setStatusText } from '@renderer/store/player/action'
@@ -12,7 +12,9 @@ const getCurrentTime = () => {
 }
 
 let lrc: Lyric
-let desktopLyricPort: Electron.IpcRendererEvent['ports'][0] | null = null
+// 支持多个桌面歌词/灵动岛客户端同时连接, 广播给所有
+let desktopLyricPorts: Array<Electron.IpcRendererEvent['ports'][0]> = []
+let achievementPort: Electron.IpcRendererEvent['ports'][0] | null = null
 const analyserTools: {
   dataArray: Uint8Array
   bufferLength: number
@@ -29,24 +31,66 @@ const analyserTools: {
       if (!this.analyser) return
       this.bufferLength = this.analyser.frequencyBinCount
     }
-    const dataArray = new Uint8Array(this.bufferLength)
-    this.analyser.getByteFrequencyData(dataArray)
-    sendDesktopLyricInfo({
-      action: 'send_analyser_data_array',
-      data: dataArray,
-    }, [dataArray.buffer])
+    if (!desktopLyricPorts.length) return
+    // 每个客户端单独拷贝一份(transfer 会转移所有权, 不能复用)
+    for (const port of desktopLyricPorts) {
+      const dataArray = new Uint8Array(this.bufferLength)
+      this.analyser.getByteFrequencyData(dataArray)
+      try {
+        port.postMessage({ action: 'send_analyser_data_array', data: dataArray }, [dataArray.buffer])
+      } catch (_e) {}
+    }
   },
 }
 
 export const sendDesktopLyricInfo = (info: LX.DesktopLyric.LyricActions, transferList?: Transferable[]) => {
-  if (desktopLyricPort == null) return
-  if (transferList) desktopLyricPort.postMessage(info, transferList)
-  else desktopLyricPort.postMessage(info)
+  if (!desktopLyricPorts.length) return
+  for (const port of desktopLyricPorts) {
+    try {
+      if (transferList) port.postMessage(info, transferList)
+      else port.postMessage(info)
+    } catch (_e) {}
+  }
 }
-const handleDesktopLyricMessage = (action: LX.DesktopLyric.WinMainActions) => {
+
+export const sendAchievementInfo = (info: { action: string, data?: any }) => {
+  if (achievementPort == null) return
+  try {
+    achievementPort.postMessage(info)
+  } catch (_e) {
+    achievementPort = null
+  }
+}
+
+// 封面异步加载完成后单独补发给成就通知, 避免切歌瞬间封面为空
+export const sendAchievementPic = () => {
+  sendAchievementInfo({
+    action: 'set_pic',
+    data: {
+      id: musicInfo.id,
+      pic: musicInfo.pic,
+    },
+  })
+  // 同时补发给灵动岛/桌面歌词端口
+  sendDesktopLyricInfo({
+    action: 'set_pic',
+    data: {
+      id: musicInfo.id,
+      pic: musicInfo.pic,
+    },
+  } as any)
+}
+const postToPort = (port: Electron.IpcRendererEvent['ports'][0], info: any, transferList?: Transferable[]) => {
+  try {
+    if (transferList) port.postMessage(info, transferList)
+    else port.postMessage(info)
+  } catch (_e) {}
+}
+
+const handleClientMessage = (port: Electron.IpcRendererEvent['ports'][0], action: LX.DesktopLyric.WinMainActions) => {
   switch (action) {
     case 'get_info':
-      sendDesktopLyricInfo({
+      postToPort(port, {
         action: 'set_info',
         data: {
           id: musicInfo.id,
@@ -57,7 +101,7 @@ const handleDesktopLyricMessage = (action: LX.DesktopLyric.WinMainActions) => {
           tlrc: musicInfo.tlrc,
           rlrc: musicInfo.rlrc,
           lxlrc: musicInfo.lxlrc,
-          // pic: musicInfo.pic,
+          pic: musicInfo.pic,
           isPlay: isPlay.value,
           line: lyric.line,
           played_time: getCurrentTime(),
@@ -65,18 +109,27 @@ const handleDesktopLyricMessage = (action: LX.DesktopLyric.WinMainActions) => {
       })
       break
     case 'get_status':
-      sendDesktopLyricInfo({
+      postToPort(port, {
         action: 'set_status',
         data: {
           isPlay: isPlay.value,
           line: lyric.line,
           played_time: getCurrentTime(),
+          duration: getDuration() * 1000,
         },
       })
       break
-    case 'get_analyser_data_array':
-      analyserTools.sendDataArray()
+    case 'get_analyser_data_array': {
+      if (analyserTools.analyser == null) {
+        analyserTools.analyser = getAnalyser()
+        if (!analyserTools.analyser) break
+        analyserTools.bufferLength = analyserTools.analyser.frequencyBinCount
+      }
+      const dataArray = new Uint8Array(analyserTools.bufferLength)
+      analyserTools.analyser.getByteFrequencyData(dataArray)
+      postToPort(port, { action: 'send_analyser_data_array', data: dataArray }, [dataArray.buffer])
       break
+    }
     default:
       break
   }
@@ -108,18 +161,54 @@ export const init = () => {
   onNewDesktopLyricProcess(({ event }) => {
     console.log('onNewDesktopLyricProcess')
     const [port] = event.ports
-    desktopLyricPort = port
 
-    port.onmessage = ({ data }) => {
-      handleDesktopLyricMessage(data.action)
-      // The event data can be any serializable object (and the event could even
-      // carry other MessagePorts with it!)
-      // const result = doWork(event.data)
-      // port.postMessage(result)
+    let identified = false
+    const tempHandler = ({ data }: { data: any }) => {
+      if (identified) return
+      identified = true
+      port.onmessage = null
+
+      if (data.action === 'register_achievement') {
+        achievementPort = port
+        port.onmessage = ({ data: msg }: { data: any }) => {
+          if (msg.action === 'get_info') {
+            sendAchievementInfo({
+              action: 'set_info',
+              data: {
+                id: musicInfo.id,
+                singer: musicInfo.singer,
+                name: musicInfo.name,
+                pic: musicInfo.pic,
+              },
+            })
+          }
+        }
+        sendAchievementInfo({
+          action: 'set_info',
+          data: {
+            id: musicInfo.id,
+            singer: musicInfo.singer,
+            name: musicInfo.name,
+            pic: musicInfo.pic,
+          },
+        })
+      } else {
+        // 桌面歌词或灵动岛客户端, 加入广播列表
+        desktopLyricPorts.push(port)
+        port.onmessage = ({ data: msg }: { data: any }) => {
+          handleClientMessage(port, msg.action)
+        }
+        handleClientMessage(port, data.action)
+      }
     }
+
+    port.onmessage = tempHandler
 
     port.onmessageerror = (event) => {
       console.log('onmessageerror', event)
+      const idx = desktopLyricPorts.indexOf(port)
+      if (idx !== -1) desktopLyricPorts.splice(idx, 1)
+      if (achievementPort === port) achievementPort = null
     }
   })
 }
@@ -234,10 +323,19 @@ export const sendInfo = () => {
       tlrc: musicInfo.tlrc,
       rlrc: musicInfo.rlrc,
       lxlrc: musicInfo.lxlrc,
-      // pic: musicInfo.pic,
+      pic: musicInfo.pic,
       isPlay: isPlay.value,
       line: lyric.line,
       played_time: getCurrentTime(),
+    },
+  })
+  sendAchievementInfo({
+    action: 'set_info',
+    data: {
+      id: musicInfo.id,
+      singer: musicInfo.singer,
+      name: musicInfo.name,
+      pic: musicInfo.pic,
     },
   })
 }

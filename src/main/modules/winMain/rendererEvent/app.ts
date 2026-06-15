@@ -69,6 +69,14 @@ export default () => {
     return setFullScreen(isFullscreen)
   })
 
+  mainHandle<void, number[]>(WIN_MAIN_RENDERER_EVENT_NAME.get_native_window_handle, async() => {
+    const { BrowserWindow } = require('electron')
+    const win = BrowserWindow.getAllWindows().find((w: Electron.BrowserWindow) => !w.isDestroyed())
+    if (!win) return []
+    const buf = win.getNativeWindowHandle()
+    return Array.from(buf)
+  })
+
   // 选择目录
   mainHandle<Electron.OpenDialogOptions, Electron.OpenDialogReturnValue>(WIN_MAIN_RENDERER_EVENT_NAME.show_select_dialog, async({ params: options }) => {
     return showSelectDialog(options)

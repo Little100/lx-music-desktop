@@ -9,7 +9,7 @@
     </div>
     <div :class="$style.infoContent">
       <div :class="$style.title" :aria-label="title + $t('copy_tip')" @click="handleCopy(title)">
-        {{ title }}
+        {{ title }}<span v-if="musicInfo.quality" :class="$style.qualityBadge">{{ formatQuality(musicInfo.quality) }}</span>
       </div>
       <div :class="$style.status">{{ statusText }}</div>
     </div>
@@ -138,6 +138,11 @@ export default {
       playPrev,
       handleToMusicLocation,
       isShowPlayerDetail,
+      formatQuality(quality) {
+        if (!quality) return ''
+        if (quality == 'flac24bit') return 'FLAC 24bit'
+        return quality.toUpperCase()
+      },
     }
   },
 }
@@ -258,6 +263,17 @@ export default {
   font-size: 12px;
   color: var(--color-font-label);
   .mixin-ellipsis-1();
+}
+.qualityBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 16px;
+  border-radius: 3px;
+  background-color: var(--color-primary-alpha-700);
+  color: var(--color-primary-font);
+  vertical-align: middle;
 }
 .status {
   padding-top: 3px;

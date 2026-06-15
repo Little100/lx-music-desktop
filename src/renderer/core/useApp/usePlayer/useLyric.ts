@@ -9,6 +9,7 @@ import {
   stop,
   init,
   sendInfo,
+  sendAchievementPic,
   setPlaybackRate,
 } from '@renderer/core/lyric'
 import { appSetting } from '@renderer/store/setting'
@@ -23,6 +24,11 @@ export default () => {
     sendInfo()
   }
 
+  // seek 后重新同步歌词(灵动岛/桌面歌词)
+  const handleSeek = () => {
+    play()
+  }
+
   watch(() => appSetting['player.isShowLyricTranslation'], setLyric)
   watch(() => appSetting['player.isShowLyricRoma'], setLyric)
   watch(() => appSetting['player.isSwapLyricTranslationAndRoma'], setLyric)
@@ -34,7 +40,9 @@ export default () => {
   window.app_event.on('error', pause)
   window.app_event.on('musicToggled', setPlayInfo)
   window.app_event.on('lyricUpdated', setLyric)
+  window.app_event.on('picUpdated', sendAchievementPic)
   window.app_event.on('setPlaybackRate', handleApplyPlaybackRate)
+  window.app_event.on('setProgress', handleSeek)
 
   onBeforeUnmount(() => {
     window.app_event.off('play', play)
@@ -43,6 +51,8 @@ export default () => {
     window.app_event.off('error', pause)
     window.app_event.off('musicToggled', setPlayInfo)
     window.app_event.off('lyricUpdated', setLyric)
+    window.app_event.off('picUpdated', sendAchievementPic)
     window.app_event.off('setPlaybackRate', handleApplyPlaybackRate)
+    window.app_event.off('setProgress', handleSeek)
   })
 }

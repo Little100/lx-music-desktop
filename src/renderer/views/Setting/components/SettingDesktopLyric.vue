@@ -11,6 +11,72 @@ dd
     base-checkbox(id="setting_desktop_lyric_pause_hide" :model-value="appSetting['desktopLyric.pauseHide']" :label="$t('setting__desktop_lyric_pause_hide')" @update:model-value="updateSetting({ 'desktopLyric.pauseHide': $event })")
   .gap-top
     base-checkbox(id="setting_desktop_lyric_audio_visualization" :model-value="appSetting['desktopLyric.audioVisualization']" :label="$t('setting__desktop_lyric_audio_visualization')" @update:model-value="updateSetting({ 'desktopLyric.audioVisualization': $event })")
+  div(v-if="appSetting['desktopLyric.audioVisualization']")
+    .gap-top
+      div
+        span {{ $t('setting__play_detail_audio_visualization_fftsize', { num: appSetting['player.audioVisualization.fftSize'] }) }}
+      div(style="--selection-width: 8rem; margin-top: 6px;")
+        base-selection(:model-value="appSetting['player.audioVisualization.fftSize']" :list="fftSizeList" item-key="id" item-name="name" @update:model-value="updateSetting({ 'player.audioVisualization.fftSize': $event })")
+    .gap-top
+      div
+        span {{ $t('setting__play_detail_audio_visualization_smoothing', { num: appSetting['player.audioVisualization.smoothing'] }) }}
+      base-slider-bar(
+        :class="$style.slider"
+        :value="appSetting['player.audioVisualization.smoothing']"
+        :min="0"
+        :max="100"
+        @change="updateSetting({ 'player.audioVisualization.smoothing': Math.round($event) })")
+    .gap-top
+      div
+        span {{ $t('setting__play_detail_audio_visualization_height_scale', { num: appSetting['player.audioVisualization.heightScale'] }) }}
+      base-slider-bar(
+        :class="$style.slider"
+        :value="appSetting['player.audioVisualization.heightScale']"
+        :min="5"
+        :max="100"
+        @change="updateSetting({ 'player.audioVisualization.heightScale': Math.round($event) })")
+    .gap-top
+      div
+        span {{ $t('setting__play_detail_audio_visualization_opacity', { num: appSetting['player.audioVisualization.opacity'] }) }}
+      base-slider-bar(
+        :class="$style.slider"
+        :value="appSetting['player.audioVisualization.opacity']"
+        :min="5"
+        :max="100"
+        @change="updateSetting({ 'player.audioVisualization.opacity': Math.round($event) })")
+    .gap-top
+      div
+        span {{ $t('setting__play_detail_audio_visualization_amplitude_scale', { num: (appSetting['player.audioVisualization.amplitudeScale'] / 100).toFixed(1) }) }}
+      base-slider-bar(
+        :class="$style.slider"
+        :value="appSetting['player.audioVisualization.amplitudeScale']"
+        :min="10"
+        :max="300"
+        @change="updateSetting({ 'player.audioVisualization.amplitudeScale': Math.round($event) })")
+    .gap-top
+      div
+        span {{ $t('setting__play_detail_audio_visualization_bar_count', { num: appSetting['player.audioVisualization.barCount'] }) }}
+      div(style="--selection-width: 8rem; margin-top: 6px;")
+        base-selection(:model-value="appSetting['player.audioVisualization.barCount']" :list="barCountList" item-key="id" item-name="name" @update:model-value="updateSetting({ 'player.audioVisualization.barCount': $event })")
+    .gap-top
+      div
+        span {{ $t('setting__play_detail_audio_visualization_bar_width', { num: appSetting['player.audioVisualization.barWidth'] === 0 ? $t('setting__play_detail_audio_visualization_bar_width_auto') : appSetting['player.audioVisualization.barWidth'] + 'px' }) }}
+      div(style="--selection-width: 8rem; margin-top: 6px;")
+        base-selection(:model-value="appSetting['player.audioVisualization.barWidth']" :list="barWidthList" item-key="id" item-name="name" @update:model-value="updateSetting({ 'player.audioVisualization.barWidth': $event })")
+    .gap-top
+      span {{ $t('setting__play_detail_audio_visualization_display_mode') }}
+      base-checkbox.gap-left(id="setting_dlrc_vis_bars" :model-value="appSetting['player.audioVisualization.showBars']" :label="$t('setting__play_detail_audio_visualization_bars')" @update:model-value="updateSetting({ 'player.audioVisualization.showBars': $event })")
+      base-checkbox.gap-left(id="setting_dlrc_vis_wave" :model-value="appSetting['player.audioVisualization.showWave']" :label="$t('setting__play_detail_audio_visualization_wave')" @update:model-value="updateSetting({ 'player.audioVisualization.showWave': $event })")
+    .gap-top
+      base-checkbox(id="setting_dlrc_vis_log_scale" :model-value="appSetting['player.audioVisualization.useLogScale']" :label="$t('setting__play_detail_audio_visualization_log_scale')" @update:model-value="updateSetting({ 'player.audioVisualization.useLogScale': $event })")
+      base-checkbox.gap-left(id="setting_dlrc_vis_linear_scale" :model-value="!appSetting['player.audioVisualization.useLogScale']" :label="$t('setting__play_detail_audio_visualization_linear_scale')" @update:model-value="updateSetting({ 'player.audioVisualization.useLogScale': !$event })")
+    .gap-top
+      base-checkbox(id="setting_dlrc_vis_center_mirror" :model-value="appSetting['player.audioVisualization.centerMirror']" :label="$t('setting__play_detail_audio_visualization_center_mirror')" @update:model-value="updateSetting({ 'player.audioVisualization.centerMirror': $event })")
+    .gap-top
+      div
+        span {{ $t('setting__play_detail_audio_visualization_target_fps', { num: appSetting['player.audioVisualization.targetFps'] === 0 ? $t('setting__play_detail_audio_visualization_target_fps_unlimited') : appSetting['player.audioVisualization.targetFps'] }) }}
+      div(style="margin-top: 6px;")
+        base-input(:class="$style.fpsInput" :model-value="appSetting['player.audioVisualization.targetFps']" type="number" :placeholder="$t('setting__play_detail_audio_visualization_target_fps_tip')" @update:model-value="setTargetFps")
   .gap-top
     base-checkbox(id="setting_desktop_lyric_delayScroll" :model-value="appSetting['desktopLyric.isDelayScroll']" :label="$t('setting__desktop_lyric_delay_scroll')" @update:model-value="updateSetting({ 'desktopLyric.isDelayScroll': $event })")
   .gap-top
@@ -126,6 +192,43 @@ const defaultPlayedColors = [
 ]
 const defaultShadowColors = [
   'rgba(0, 0, 0, 0.15)',
+]
+
+const fftSizeList = [
+  { id: 256, name: '256' },
+  { id: 512, name: '512' },
+  { id: 1024, name: '1024' },
+  { id: 2048, name: '2048' },
+  { id: 4096, name: '4096' },
+  { id: 8192, name: '8192' },
+  { id: 16384, name: '16384' },
+  { id: 32768, name: '32768' },
+]
+
+const barCountList = [
+  { id: 64, name: '64' },
+  { id: 128, name: '128' },
+  { id: 256, name: '256' },
+  { id: 512, name: '512' },
+  { id: 1024, name: '1024' },
+  { id: 2048, name: '2048' },
+  { id: 4096, name: '4096' },
+  { id: 8192, name: '8192' },
+]
+
+const barWidthList = [
+  { id: 0, name: 'Auto' },
+  { id: 1, name: '1px' },
+  { id: 2, name: '2px' },
+  { id: 3, name: '3px' },
+  { id: 4, name: '4px' },
+  { id: 5, name: '5px' },
+  { id: 6, name: '6px' },
+  { id: 8, name: '8px' },
+  { id: 10, name: '10px' },
+  { id: 12, name: '12px' },
+  { id: 15, name: '15px' },
+  { id: 20, name: '20px' },
 ]
 
 const useLyricUnplayColor = () => {
@@ -287,6 +390,12 @@ export default {
       })
     }
 
+    const setTargetFps = (val) => {
+      const num = parseInt(val)
+      if (isNaN(num) || num < 0) return
+      updateSetting({ 'player.audioVisualization.targetFps': Math.min(300, num) })
+    }
+
     return {
       appSetting,
       updateSetting,
@@ -298,7 +407,11 @@ export default {
       resetWindowSetting,
 
       fontList,
+      fftSizeList,
+      barCountList,
+      barWidthList,
       isLinux,
+      setTargetFps,
     }
   },
 }
@@ -336,6 +449,13 @@ export default {
   padding-top: 10px;
   text-align: center;
   line-height: 1.1;
+}
+.slider {
+  width: 100%;
+  margin-top: 4px;
+}
+.fpsInput {
+  width: 120px;
 }
 
 </style>

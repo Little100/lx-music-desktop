@@ -124,24 +124,7 @@ export default () => {
 }
 
 const checkUpdate = () => {
-  // if (!isFirstCheckedUpdate) {
-  //   if (waitEvent.length) {
-  //     waitEvent.forEach((event, index) => {
-  //       setTimeout(() => { // 延迟发送事件，过早发送可能渲染进程还没启动完成
-  //         sendEvent(event.type, event.info)
-  //       }, 2000 * (index + 1))
-  //     })
-  //     waitEvent = []
-  //   }
-  //   return
-  // }
-  // isFirstCheckedUpdate = false
-
-  // 由于集合安装包中不包含win arm版，这将会导致arm版更新失败
-  if (isWin && process.arch.includes('arm')) {
-    handleSendEvent({ type: WIN_MAIN_RENDERER_EVENT_NAME.update_error, info: 'failed' })
-  } else {
-    autoUpdater.autoDownload = global.lx.appSetting['common.tryAutoUpdate']
-    void autoUpdater.checkForUpdates()
-  }
+  // 自定义版本，禁用自动更新以防止覆盖自定义修改
+  console.log('Auto-update disabled for custom build.')
+  handleSendEvent({ type: WIN_MAIN_RENDERER_EVENT_NAME.update_not_available, info: null })
 }

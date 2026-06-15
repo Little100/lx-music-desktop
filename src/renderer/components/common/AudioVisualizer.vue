@@ -1,166 +1,195 @@
 <template>
-  <div :class="$style.content">
-    <canvas ref="dom_canvas" :class="$style.canvas" />
-  </div>
+  <div ref="dom_container" :class="$style.content" />
 </template>
 
 <script>
-import { ref, onBeforeUnmount, onMounted } from '@common/utils/vueTools'
-import { getAnalyser } from '@renderer/plugins/player'
+import { ref, onBeforeUnmount, onMounted, watch } from '@common/utils/vueTools'
+import { getAnalyser, setAnalyserFftSize } from '@renderer/plugins/player'
 import { isPlay } from '@renderer/store/player/state'
-// import { appSetting } from '@renderer/store/setting'
+import { appSetting } from '@renderer/store/setting'
+import { rendererInvoke } from '@common/rendererIpc'
+import { WIN_MAIN_RENDERER_EVENT_NAME } from '@common/ipcNames'
 
-// const themes = {
-//   green: 'rgba(77,175,124,.16)',
-//   blue: 'rgba(52,152,219,.16)',
-//   yellow: 'rgba(233,212,96,.22)',
-//   orange: 'rgba(245,171,53,.16)',
-//   red: 'rgba(214,69,65,.12)',
-//   pink: 'rgba(241,130,141,.16)',
-//   purple: 'rgba(155,89,182,.14)',
-//   grey: 'rgba(108,122,137,.16)',
-//   ming: 'rgba(51,110,123,.14)',
-//   blue2: 'rgba(79,98,208,.14)',
-//   black: 'rgba(39,39,39,.4)',
-//   mid_autumn: 'rgba(74,55,82,.1)',
-//   naruto: 'rgba(87,144,167,.15)',
-//   happy_new_year: 'rgba(192,57,43,.1)',
-// }
-
-const getBarWidth = canvasWidth => {
-  let barWidth = (canvasWidth / 128) * 2.5
-  const width = canvasWidth / 86
-  const diffWidth = barWidth - width
-  // console.log(barWidth - width)
-  // if (barWidth - width > 20) newBarWidth = 20
-  // barWidth = newBarWidth
-  return diffWidth > 32
-    ? canvasWidth / 128 // 4k屏、超宽屏直接显示所有频谱条
-    : diffWidth > 12 ? width : barWidth
+let nativeVisualizer = null
+try {
+  const path = require('path')
+  const addonPath = process.env.NODE_ENV === 'production'
+    ? path.join(__dirname, 'visualizer.win32-x64.node')
+    : path.join(__dirname, '../../../../native/visualizer/visualizer.win32-x64.node')
+  nativeVisualizer = require(addonPath)
+} catch (e) {
+  console.warn('Native visualizer not available, using canvas fallback')
 }
+
 export default {
   setup() {
-    const dom_canvas = ref(null)
+    const dom_container = ref(null)
     const analyser = getAnalyser()
 
-    let ctx
-    let bufferLength = 0
-    let dataArray
-    let WIDTH
-    let HEIGHT
-    let MAX_HEIGHT
-    let barWidth
-    let barHeight
-    let x = 0
     let isPlaying = false
-    let animationFrameId
+    let animationFrameId = null
+    let dataArray = null
+    let nativeBuffer = null
+    let bufferLength = 0
+    let colorTimerId = null
+    let initialized = false
+    let lastFrameTime = 0
 
-    let num
-    let mult
-    const maxNum = 255
-    let frequencyAvg = 0
+    const getSetting = (key, def) => appSetting[key] ?? def
 
-    // const theme = useRefGetter('theme')
-    // const setting = useRefGetter('setting')
-    let themeColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-light-200-alpha-800')
-    // watch(theme, theme => {
-    //   themeColor = themes[theme || 'green']
-    // })
+    const sendSettings = () => {
+      if (!nativeVisualizer || !initialized) return
+      nativeVisualizer.setSettings({
+        smoothing: getSetting('player.audioVisualization.smoothing', 80),
+        heightScale: getSetting('player.audioVisualization.heightScale', 70),
+        opacity: getSetting('player.audioVisualization.opacity', 30),
+        amplitudeScale: getSetting('player.audioVisualization.amplitudeScale', 100),
+        showBars: getSetting('player.audioVisualization.showBars', true),
+        showWave: getSetting('player.audioVisualization.showWave', false),
+        useLogScale: getSetting('player.audioVisualization.useLogScale', true),
+        barCount: getSetting('player.audioVisualization.barCount', 128),
+        barWidth: getSetting('player.audioVisualization.barWidth', 0),
+        centerMirror: getSetting('player.audioVisualization.centerMirror', false),
+      })
+    }
 
-    // https://developer.mozilla.org/zh-CN/docs/Web/API/AnalyserNode/smoothingTimeConstant
-    const renderFrame = () => {
-      x = 0
+    const sendColor = () => {
+      if (!nativeVisualizer || !initialized) return
+      const s = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-primary-light-200-alpha-800').trim()
+      const m = s.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+      if (m) nativeVisualizer.setColor(+m[1], +m[2], +m[3])
+    }
+
+    const pump = (timestamp) => {
+      if (!analyser || !initialized || !isPlaying) return
+
+      const targetFps = getSetting('player.audioVisualization.targetFps', 0)
+      if (targetFps > 0) {
+        const interval = 1000 / targetFps
+        if (timestamp - lastFrameTime < interval) {
+          animationFrameId = requestAnimationFrame(pump)
+          return
+        }
+        lastFrameTime = timestamp - ((timestamp - lastFrameTime) % interval)
+      }
 
       analyser.getByteFrequencyData(dataArray)
+      nativeBuffer.set(dataArray)
+      nativeVisualizer.updateFrame(nativeBuffer)
 
-      ctx.clearRect(0, 0, WIDTH, HEIGHT)
-      // ctx.fillRect(0, 0, WIDTH, HEIGHT)
-      ctx.fillStyle = themeColor
-
-      for (let i = 0; i < bufferLength; i++) {
-        mult = Math.floor(i / maxNum)
-        num = mult % 2 === 0 ? (i - maxNum * mult) : (maxNum - (i - maxNum * mult))
-        let spectrum = num > 90 ? 0 : dataArray[num + 20]
-        frequencyAvg += spectrum * 1.2
-      }
-      frequencyAvg /= bufferLength
-      frequencyAvg *= 1.4
-
-      frequencyAvg = frequencyAvg / maxNum
-      // ctx.scale(1, 1 + frequencyAvg)
-
-      for (let i = 0; i < bufferLength; i++) {
-        if (x > WIDTH) break
-
-        barHeight = dataArray[i]
-
-        // let r = barHeight + (25 * (i / bufferLength))
-        // let g = 250 * (i / bufferLength)
-        // let b = 50
-
-        // ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')'
-        barHeight = (barHeight * frequencyAvg + barHeight * 0.42) * MAX_HEIGHT
-        ctx.fillRect(x, HEIGHT - barHeight, barWidth, barHeight)
-
-        x += barWidth
-      }
-
-      animationFrameId = null
-      if (isPlaying) animationFrameId = window.requestAnimationFrame(renderFrame)
+      animationFrameId = requestAnimationFrame(pump)
     }
 
     const handlePlay = () => {
       isPlaying = true
-      // analyser.fftSize = 256
+      const fft = getSetting('player.audioVisualization.fftSize', 2048)
+      setAnalyserFftSize(fft)
       bufferLength = analyser.frequencyBinCount
-      // console.log(bufferLength)
-      barWidth = getBarWidth(WIDTH)
       dataArray = new Uint8Array(bufferLength)
-      renderFrame()
+      nativeBuffer = Buffer.alloc(bufferLength)
+      if (initialized) {
+        nativeVisualizer.show()
+        lastFrameTime = 0
+        animationFrameId = requestAnimationFrame(pump)
+      }
     }
+
     const handlePause = () => {
-      if (animationFrameId) window.cancelAnimationFrame(animationFrameId)
+      if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null }
       isPlaying = false
     }
 
     const handleResize = () => {
-      const canvas = dom_canvas.value
-      canvas.width = canvas.clientWidth
-      canvas.height = canvas.clientHeight
-      WIDTH = canvas.width
-      HEIGHT = canvas.height
-      MAX_HEIGHT = Math.round(HEIGHT * 0.4 / 255 * 10000) / 10000
-      // console.log(MAX_HEIGHT)
-      barWidth = getBarWidth(WIDTH)
+      if (!initialized || !dom_container.value) return
+      const rect = dom_container.value.getBoundingClientRect()
+      nativeVisualizer.resize(
+        Math.round(rect.left), Math.round(rect.top),
+        Math.round(rect.width), Math.round(rect.height),
+      )
     }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null }
+      } else if (isPlaying && initialized) {
+        lastFrameTime = 0
+        animationFrameId = requestAnimationFrame(pump)
+      }
+    }
+
+    watch(
+      () => [
+        appSetting['player.audioVisualization.smoothing'],
+        appSetting['player.audioVisualization.heightScale'],
+        appSetting['player.audioVisualization.opacity'],
+        appSetting['player.audioVisualization.amplitudeScale'],
+        appSetting['player.audioVisualization.showBars'],
+        appSetting['player.audioVisualization.showWave'],
+        appSetting['player.audioVisualization.useLogScale'],
+        appSetting['player.audioVisualization.barCount'],
+        appSetting['player.audioVisualization.barWidth'],
+        appSetting['player.audioVisualization.centerMirror'],
+      ],
+      () => { sendSettings() },
+    )
+
+    watch(() => appSetting['player.audioVisualization.fftSize'], (v) => {
+      if (isPlaying && v) {
+        setAnalyserFftSize(v)
+        bufferLength = analyser.frequencyBinCount
+        dataArray = new Uint8Array(bufferLength)
+        nativeBuffer = Buffer.alloc(bufferLength)
+      }
+    })
 
     window.app_event.on('play', handlePlay)
     window.app_event.on('pause', handlePause)
     window.app_event.on('error', handlePause)
     window.addEventListener('resize', handleResize)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     onBeforeUnmount(() => {
       handlePause()
+      if (colorTimerId) { clearInterval(colorTimerId); colorTimerId = null }
       window.app_event.off('play', handlePlay)
       window.app_event.off('pause', handlePause)
       window.app_event.off('error', handlePause)
       window.removeEventListener('resize', handleResize)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (initialized) {
+        nativeVisualizer.destroy()
+        initialized = false
+      }
     })
 
-    onMounted(() => {
-      const canvas = dom_canvas.value
-      ctx = canvas.getContext('2d')
-      canvas.width = canvas.clientWidth
-      canvas.height = canvas.clientHeight
-      WIDTH = canvas.width
-      HEIGHT = canvas.height
-      MAX_HEIGHT = Math.round(HEIGHT * 0.4 / 255 * 10000) / 10000
-      // console.log(MAX_HEIGHT)
-      if (isPlay.value) handlePlay()
+    onMounted(async() => {
+      if (!nativeVisualizer) return
+
+      const handleBytes = await rendererInvoke(WIN_MAIN_RENDERER_EVENT_NAME.get_native_window_handle)
+      if (!handleBytes || handleBytes.length === 0) return
+
+      const buf = Buffer.from(handleBytes)
+      const hwnd = buf.length >= 8 ? Number(buf.readBigInt64LE(0)) : buf.readInt32LE(0)
+
+      const container = dom_container.value
+      const rect = container.getBoundingClientRect()
+
+      initialized = nativeVisualizer.create(
+        hwnd,
+        Math.round(rect.left), Math.round(rect.top),
+        Math.round(rect.width), Math.round(rect.height),
+      )
+
+      if (initialized) {
+        sendSettings()
+        sendColor()
+        colorTimerId = setInterval(sendColor, 2000)
+        if (isPlay.value) handlePlay()
+      }
     })
 
-    return {
-      dom_canvas,
-    }
+    return { dom_container }
   },
 }
 </script>
@@ -174,10 +203,5 @@ export default {
   height: 100%;
   pointer-events: none;
   z-index: 100;
-}
-.canvas {
-  width: 100%;
-  height: 100%;
-  // opacity: 0.1;
 }
 </style>

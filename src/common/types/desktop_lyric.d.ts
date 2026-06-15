@@ -37,6 +37,18 @@ declare namespace LX {
       'player.isSwapLyricTranslationAndRoma': LX.AppSetting['player.isSwapLyricTranslationAndRoma']
       'player.isPlayLxlrc': LX.AppSetting['player.isPlayLxlrc']
       'player.playbackRate': LX.AppSetting['player.playbackRate']
+      'player.audioVisualization': LX.AppSetting['player.audioVisualization']
+      'player.audioVisualization.fftSize': LX.AppSetting['player.audioVisualization.fftSize']
+      'player.audioVisualization.smoothing': LX.AppSetting['player.audioVisualization.smoothing']
+      'player.audioVisualization.heightScale': LX.AppSetting['player.audioVisualization.heightScale']
+      'player.audioVisualization.opacity': LX.AppSetting['player.audioVisualization.opacity']
+      'player.audioVisualization.showBars': LX.AppSetting['player.audioVisualization.showBars']
+      'player.audioVisualization.showWave': LX.AppSetting['player.audioVisualization.showWave']
+      'player.audioVisualization.useLogScale': LX.AppSetting['player.audioVisualization.useLogScale']
+      'player.audioVisualization.amplitudeScale': LX.AppSetting['player.audioVisualization.amplitudeScale']
+      'player.audioVisualization.barCount': LX.AppSetting['player.audioVisualization.barCount']
+      'player.audioVisualization.barWidth': LX.AppSetting['player.audioVisualization.barWidth']
+      'player.audioVisualization.centerMirror': LX.AppSetting['player.audioVisualization.centerMirror']
     }
 
     type WinMainActions = 'get_info' | 'get_status' | 'get_analyser_data_array'
@@ -58,7 +70,7 @@ declare namespace LX {
       tlrc: string | null
       rlrc: string | null
       lxlrc: string | null
-      // pic: string | null
+      pic?: string | null
       isPlay: boolean
       line: number
       played_time: number
@@ -67,6 +79,7 @@ declare namespace LX {
       isPlay: boolean
       line: number
       played_time: number
+      duration?: number
     }>
     | LyricAction<'set_lyric', {
       lrc: string | null

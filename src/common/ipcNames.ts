@@ -154,6 +154,8 @@ const modules = {
     download_list_update: 'download_list_update',
     download_list_remove: 'download_list_remove',
     download_list_clear: 'download_list_clear',
+
+    get_native_window_handle: 'get_native_window_handle',
   },
   winLyric: {
     close: 'close',
@@ -167,6 +169,27 @@ const modules = {
     request_main_window_channel: 'request_main_window_channel',
     provide_main_window_channel: 'provide_main_window_channel',
     mouse_enter_leave: 'mouse_enter_leave',
+  },
+  winAchievement: {
+    get_config: 'get_config',
+    set_config: 'set_config',
+    on_config_change: 'on_config_change',
+    main_window_inited: 'main_window_inited',
+    request_main_window_channel: 'request_main_window_channel',
+    provide_main_window_channel: 'provide_main_window_channel',
+  },
+  winDynamicIsland: {
+    get_config: 'get_config',
+    set_config: 'set_config',
+    set_docked: 'set_docked',
+    set_size: 'set_size',
+    report_bounds: 'report_bounds',
+    on_config_change: 'on_config_change',
+    main_window_inited: 'main_window_inited',
+    request_main_window_channel: 'request_main_window_channel',
+    provide_main_window_channel: 'provide_main_window_channel',
+    mouse_enter: 'mouse_enter',
+    mouse_leave: 'mouse_leave',
   },
   hotKey: {
     enable: 'enable',
@@ -196,4 +219,6 @@ export const PLAYER_EVENT_NAME = modules.player
 export const DISLIKE_EVENT_NAME = modules.dislike
 export const WIN_MAIN_RENDERER_EVENT_NAME = modules.winMain
 export const WIN_LYRIC_RENDERER_EVENT_NAME = modules.winLyric
+export const WIN_ACHIEVEMENT_RENDERER_EVENT_NAME = modules.winAchievement
+export const WIN_DYNAMIC_ISLAND_RENDERER_EVENT_NAME = modules.winDynamicIsland
 export const HOTKEY_RENDERER_EVENT_NAME = modules.hotKey

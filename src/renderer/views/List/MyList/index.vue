@@ -75,6 +75,14 @@
     <DuplicateMusicModal v-model:visible="isShowDuplicateMusicModal" :list-info="duplicateListInfo" />
     <ListSortModal v-model:visible="isShowListSortModal" :list-info="sortListInfo" />
     <ListUpdateModal v-model:visible="isShowListUpdateModal" />
+    <ScanFailedModal
+      :visible="isShowScanModal"
+      :is-scanning="isScanning"
+      :scan-progress="scanProgress"
+      :scan-results="scanResults"
+      @update:visible="closeScanModal"
+      @remove-all="removeFailedMusics"
+    />
   </div>
 </template>
 
@@ -85,6 +93,7 @@ import musicSdk from '@renderer/utils/musicSdk'
 import DuplicateMusicModal from './components/DuplicateMusicModal.vue'
 import ListSortModal from './components/ListSortModal.vue'
 import ListUpdateModal from './components/ListUpdateModal.vue'
+import ScanFailedModal from './components/ScanFailedModal.vue'
 
 import { defaultList, loveList, userLists, fetchingListStatus } from '@renderer/store/list/state'
 import { removeUserList } from '@renderer/store/list/action'
@@ -108,6 +117,7 @@ import useDarg from './useDarg'
 import useEditList from './useEditList'
 import useListScroll from './useListScroll'
 import useDuplicate from './useDuplicate'
+import useScanFailed from './useScanFailed'
 
 export default {
   name: 'MyLists',
@@ -115,6 +125,7 @@ export default {
     DuplicateMusicModal,
     ListSortModal,
     ListUpdateModal,
+    ScanFailedModal,
   },
   props: {
     listId: {
@@ -134,6 +145,7 @@ export default {
     const { isShowListUpdateModal, handleUpdateSourceList } = useListUpdate()
     const { isShowListSortModal, sortListInfo, handleSortList } = useSort()
     const { isShowDuplicateMusicModal, duplicateListInfo, handleDuplicateList } = useDuplicate()
+    const { isShowScanModal, scanProgress, scanResults, isScanning, startScan, removeFailedMusics, closeScanModal } = useScanFailed()
     const { handleRename, handleSaveListName, isShowNewList, isNewListLeave, handleCreateList } = useEditList({ dom_lists_list })
     useListScroll({ dom_lists_list })
 
@@ -181,6 +193,7 @@ export default {
       handleDuplicateList,
       handleRename,
       handleRemove,
+      handleScanFailed: startScan,
     })
 
     const handleListsItemRigthClick = (event, index) => {
@@ -244,6 +257,12 @@ export default {
       handleListToggle,
       isModDown,
       hideMenu: handleMenuClick,
+      isShowScanModal,
+      scanProgress,
+      scanResults,
+      isScanning,
+      removeFailedMusics,
+      closeScanModal,
     }
   },
 }

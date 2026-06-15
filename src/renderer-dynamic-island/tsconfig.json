@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "paths": {
+      "@common/*": ["common/*"],
+      "@island/*": ["renderer-dynamic-island/*"],
+      "@static/*": ["static/*"],
+      "@root/*": ["./*"]
+    },
+    "typeRoots": [
+      "./types"
+    ]
+  }
+}

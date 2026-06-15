@@ -185,6 +185,63 @@ declare global {
       'player.audioVisualization': boolean
 
       /**
+       * 音频可视化 FFT 大小
+       */
+      'player.audioVisualization.fftSize': number
+
+      /**
+       * 音频可视化平滑度 (0-100)
+       */
+      'player.audioVisualization.smoothing': number
+
+      /**
+       * 音频可视化柱形高度缩放 (0-100)
+       */
+      'player.audioVisualization.heightScale': number
+
+      /**
+       * 音频可视化透明度 (0-100)
+       */
+      'player.audioVisualization.opacity': number
+
+      /**
+       * 音频可视化显示柱形
+       */
+      'player.audioVisualization.showBars': boolean
+
+      /**
+       * 音频可视化显示波形
+       */
+      'player.audioVisualization.showWave': boolean
+
+      /**
+       * 音频可视化使用对数频谱
+       */
+      'player.audioVisualization.useLogScale': boolean
+
+      /**
+       * 音频可视化振幅倍率 (10-300, 表示 0.1x-3.0x)
+       */
+      'player.audioVisualization.amplitudeScale': number
+
+      /**
+       * 音频可视化柱子数量 (2的幂次: 64, 128, 256, 512, 1024, 2048, 4096, 8192)
+       */
+      'player.audioVisualization.barCount': number
+
+      /**
+       * 音频可视化柱子宽度 (0=自动, 其他为像素值)
+       */
+      'player.audioVisualization.barWidth': number
+
+      /**
+       * 音频可视化中心镜像
+       */
+      'player.audioVisualization.centerMirror': boolean
+
+      'player.audioVisualization.targetFps': number
+
+      /**
        * 定时暂停播放-是否等待歌曲播放完毕再暂停
        */
       'player.waitPlayEndStop': boolean
@@ -690,6 +747,181 @@ declare global {
        * 是否在离开搜索界面时自动清空搜索结果列表
        */
       'odc.isAutoClearSearchList': boolean
+
+      /**
+       * 是否启用灵动岛
+       */
+      'dynamicIsland.enable': boolean
+
+      /**
+       * 灵动岛垂直偏移量
+       */
+      'dynamicIsland.offsetY': number
+
+      /**
+       * 灵动岛折叠宽度
+       */
+      'dynamicIsland.collapsedWidth': number
+
+      /**
+       * 灵动岛折叠高度
+       */
+      'dynamicIsland.collapsedHeight': number
+
+      /**
+       * 灵动岛展开宽度
+       */
+      'dynamicIsland.expandedWidth': number
+
+      /**
+       * 灵动岛展开高度
+       */
+      'dynamicIsland.expandedHeight': number
+
+      /**
+       * 灵动岛信息自动隐藏延迟
+       */
+      'dynamicIsland.autoHideInfoDelay': number
+
+      /**
+       * 灵动岛鼠标离开延迟
+       */
+      'dynamicIsland.mouseLeaveDelay': number
+
+      /**
+       * 灵动岛悬停展开延迟
+       */
+      'dynamicIsland.hoverExpandDelay': number
+
+      /**
+       * 灵动岛是否始终置顶
+       */
+      'dynamicIsland.isAlwaysOnTop': boolean
+
+      /**
+       * 灵动岛置顶循环检测
+       */
+      'dynamicIsland.isAlwaysOnTopLoop': boolean
+
+      /**
+       * 灵动岛音频可视化
+       */
+      'dynamicIsland.audioVisualization': boolean
+
+      /**
+       * 灵动岛可视化放大倍数
+       */
+      'dynamicIsland.visualizerAmplify': number
+
+      /**
+       * 灵动岛自动振幅(动态归一化, 防止过高过低)
+       */
+      'dynamicIsland.autoVisualizerAmplify': boolean
+
+      /**
+       * 灵动岛使用亚克力效果
+       */
+      'dynamicIsland.useAcrylic': boolean
+
+      /**
+       * 灵动岛模糊程度
+       */
+      'dynamicIsland.blur': number
+
+      /**
+       * 灵动岛不透明度
+       */
+      'dynamicIsland.opacity': number
+
+      /**
+       * 灵动岛动画速度
+       */
+      'dynamicIsland.animationSpeed': number
+
+      /**
+       * 灵动岛歌词对齐方式
+       */
+      'dynamicIsland.lyricAlign': 'left' | 'center' | 'right'
+
+      /**
+       * 灵动岛一直展开显示歌词
+       */
+      'dynamicIsland.alwaysShowLyric': boolean
+
+      /**
+       * 灵动岛双语字幕模式 (独立于主程序歌词翻译设置)
+       */
+      'dynamicIsland.lyricMode': 'original' | 'translation' | 'both'
+
+      /**
+       * 灵动岛暂停时降低透明度
+       */
+      'dynamicIsland.pausedOpacity': boolean
+
+      /**
+       * 灵动岛字体
+       */
+      'dynamicIsland.font': string
+
+      /**
+       * 成就通知字体
+       */
+      'achievement.font': string
+
+      /**
+       * 是否启用成就通知
+       */
+      'achievement.enable': boolean
+
+      /**
+       * 成就通知字体大小
+       */
+      'achievement.fontSize': number
+
+      /**
+       * 成就通知距顶部偏移量
+       */
+      'achievement.offsetY': number
+
+      /**
+       * 成就通知距右侧偏移量
+       */
+      'achievement.offsetX': number
+
+      /**
+       * 成就通知显示时长（毫秒）
+       */
+      'achievement.duration': number
+
+      /**
+       * 成就通知背景透明度 (0-100)
+       */
+      'achievement.opacity': number
+
+      /**
+       * 是否显示歌曲封面
+       */
+      'achievement.showCover': boolean
+
+      /**
+       * 是否播放成就音效
+       */
+      'achievement.enableSound': boolean
+
+      /**
+       * 成就音效音量 (0-100)
+       */
+      'achievement.soundVolume': number
+
+      /**
+       * 最大同时显示数量
+       */
+      'achievement.maxVisible': number
+
+      /**
+       * 是否在暂停时隐藏成就
+       */
+      'achievement.pauseHide': boolean
     }
   }
 

@@ -6,6 +6,7 @@
       <layout-view id="view" />
       <layout-play-bar id="player" />
     </div>
+    <common-audio-visualizer v-if="appSetting['player.audioVisualization'] && !isShowPlayerDetail" />
     <layout-icons />
     <layout-change-log-modal />
     <layout-update-modal />
@@ -21,6 +22,8 @@ import { onMounted } from '@common/utils/vueTools'
 // import BubbleCursor from '@common/utils/effects/cursor-effects/bubbleCursor'
 // import '@common/utils/effects/snow.min'
 import useApp from '@renderer/core/useApp'
+import { appSetting } from '@renderer/store/setting'
+import { isShowPlayerDetail } from '@renderer/store/player/state'
 
 useApp()
 

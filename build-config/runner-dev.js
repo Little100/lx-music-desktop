@@ -13,6 +13,8 @@ const webpackHotMiddleware = require('webpack-hot-middleware')
 const mainConfig = require('./main/webpack.config.dev')
 const rendererConfig = require('./renderer/webpack.config.dev')
 const rendererLyricConfig = require('./renderer-lyric/webpack.config.dev')
+const rendererAchievementConfig = require('./renderer-achievement/webpack.config.dev')
+const rendererDynamicIslandConfig = require('./renderer-dynamic-island/webpack.config.dev')
 const rendererScriptConfig = require('./renderer-scripts/webpack.config.dev')
 const { Arch } = require('electron-builder')
 const replaceLib = require('./build-before-pack')
@@ -22,6 +24,8 @@ const { debounce } = require('./utils')
 let electronProcess = null
 let hotMiddlewareRenderer
 let hotMiddlewareRendererLyric
+let hotMiddlewareRendererAchievement
+let hotMiddlewareRendererDynamicIsland
 
 
 function startRenderer() {
@@ -120,6 +124,78 @@ function startRendererLyric() {
   })
 }
 
+function startRendererAchievement() {
+  return new Promise((resolve, reject) => {
+    const compiler = webpack(rendererAchievementConfig)
+    hotMiddlewareRendererAchievement = webpackHotMiddleware(compiler, {
+      log: false,
+      heartbeat: 2500,
+    })
+
+    compiler.hooks.compilation.tap('compilation', compilation => {
+      HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync('html-webpack-plugin-after-emit', (data, cb) => {
+        hotMiddlewareRendererAchievement.publish({ action: 'reload' })
+        cb()
+      })
+    })
+
+    const server = new WebpackDevServer({
+      port: 5211,
+      hot: true,
+      historyApiFallback: true,
+      client: {
+        logging: 'warn',
+        overlay: true,
+      },
+      setupMiddlewares(middlewares, devServer) {
+        devServer.app.use(hotMiddlewareRendererAchievement)
+        setImmediate(() => {
+          devServer.middleware.waitUntilValid(resolve)
+        })
+        return middlewares
+      },
+    }, compiler)
+
+    server.start()
+  })
+}
+
+function startRendererDynamicIsland() {
+  return new Promise((resolve, reject) => {
+    const compiler = webpack(rendererDynamicIslandConfig)
+    hotMiddlewareRendererDynamicIsland = webpackHotMiddleware(compiler, {
+      log: false,
+      heartbeat: 2500,
+    })
+
+    compiler.hooks.compilation.tap('compilation', compilation => {
+      HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync('html-webpack-plugin-after-emit', (data, cb) => {
+        hotMiddlewareRendererDynamicIsland.publish({ action: 'reload' })
+        cb()
+      })
+    })
+
+    const server = new WebpackDevServer({
+      port: 9082,
+      hot: true,
+      historyApiFallback: true,
+      client: {
+        logging: 'warn',
+        overlay: true,
+      },
+      setupMiddlewares(middlewares, devServer) {
+        devServer.app.use(hotMiddlewareRendererDynamicIsland)
+        setImmediate(() => {
+          devServer.middleware.waitUntilValid(resolve)
+        })
+        return middlewares
+      },
+    }, compiler)
+
+    server.start()
+  })
+}
+
 function startRendererScripts() {
   return new Promise((resolve, reject) => {
     // mainConfig.entry.main = [path.join(__dirname, '../src/main/index.dev.js')].concat(mainConfig.entry.main)
@@ -147,6 +223,7 @@ function startMain() {
     compiler.hooks.watchRun.tapAsync('watch-run', (compilation, done) => {
       hotMiddlewareRenderer.publish({ action: 'compiling' })
       hotMiddlewareRendererLyric.publish({ action: 'compiling' })
+      hotMiddlewareRendererDynamicIsland.publish({ action: 'compiling' })
       done()
     })
 
@@ -222,6 +299,8 @@ function init() {
   spinners.add('main', { text: 'main compiling' })
   spinners.add('renderer', { text: 'renderer compiling' })
   spinners.add('renderer-lyric', { text: 'renderer-lyric compiling' })
+  spinners.add('renderer-achievement', { text: 'renderer-achievement compiling' })
+  spinners.add('renderer-dynamic-island', { text: 'renderer-dynamic-island compiling' })
   spinners.add('renderer-scripts', { text: 'renderer-scripts compiling' })
   function handleSuccess(name) {
     spinners.succeed(name, { text: name + ' compile success!' })
@@ -239,6 +318,14 @@ function init() {
     startRendererLyric().then(() => handleSuccess('renderer-lyric')).catch((err) => {
       console.error(err.message)
       return handleFail('renderer-lyric')
+    }),
+    startRendererAchievement().then(() => handleSuccess('renderer-achievement')).catch((err) => {
+      console.error(err.message)
+      return handleFail('renderer-achievement')
+    }),
+    startRendererDynamicIsland().then(() => handleSuccess('renderer-dynamic-island')).catch((err) => {
+      console.error(err.message)
+      return handleFail('renderer-dynamic-island')
     }),
     startRendererScripts().then(() => handleSuccess('renderer-scripts')).catch((err) => {
       console.error(err.message)

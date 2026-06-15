@@ -15,6 +15,7 @@ export default ({
   handleExportList,
   handleUpdateSourceList,
   handleRemove,
+  handleScanFailed,
 }) => {
   const menuControl = reactive({
     rename: true,
@@ -26,6 +27,7 @@ export default ({
     export: true,
     sync: false,
     remove: true,
+    scanFailed: true,
   })
   const t = useI18n()
   const menuLocation = reactive({ x: 0, y: 0 })
@@ -77,6 +79,11 @@ export default ({
         name: t('lists__remove'),
         action: 'remove',
         disabled: !menuControl.remove,
+      },
+      {
+        name: t('lists__scan_failed'),
+        action: 'scanFailed',
+        disabled: !menuControl.scanFailed,
       },
     ]
   })
@@ -178,6 +185,9 @@ export default ({
         break
       case 'remove':
         handleRemove(listInfo)
+        break
+      case 'scanFailed':
+        handleScanFailed(listInfo)
         break
     }
   }

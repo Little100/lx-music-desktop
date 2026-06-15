@@ -17,9 +17,10 @@ import { getMusicUrl, getPicPath, getLyricInfo } from '../music/index'
 import { filterList } from './utils'
 import { requestMsg } from '@renderer/utils/message'
 import { getRandom } from '@renderer/utils/index'
-import { addListMusics, removeListMusics } from '@renderer/store/list/action'
+import { addListMusics, removeListMusics, updateListMusics } from '@renderer/store/list/action'
 import { loveList } from '@renderer/store/list/state'
 import { addDislikeInfo } from '@renderer/core/dislikeList'
+import { getPlayQuality } from '../music/utils'
 // import { checkMusicFileAvailable } from '@renderer/utils/music'
 
 let gettingUrlId = ''
@@ -54,6 +55,20 @@ const createDelayNextTimeout = (delay: number) => {
 }
 const { addDelayNextTimeout, clearDelayNextTimeout } = createDelayNextTimeout(5000)
 const { addDelayNextTimeout: addLoadTimeout, clearDelayNextTimeout: clearLoadTimeout } = createDelayNextTimeout(100000)
+
+// 将自动换源命中的源写入歌曲 meta.toggleMusicInfo 并落库, 仅处理普通播放列表内的在线歌曲
+const saveToggleMusicInfo = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, toggleMusicInfo: LX.Music.MusicInfoOnline) => {
+  if ('progress' in musicInfo) return
+  if (musicInfo.source == 'local') return
+  // 临时播放及无归属列表的歌曲不持久化
+  const listId = playMusicInfo.listId
+  if (!listId || playMusicInfo.isTempPlay) return
+  if (playMusicInfo.musicInfo?.id != musicInfo.id) return
+  // 已记录相同源则跳过, 避免重复写库
+  if (musicInfo.meta.toggleMusicInfo?.id == toggleMusicInfo.id) return
+  musicInfo.meta.toggleMusicInfo = toggleMusicInfo
+  void updateListMusics([{ id: listId, musicInfo }])
+}
 
 /**
  * 检查音乐信息是否已更改
@@ -93,6 +108,9 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
   // const type = getPlayType(appSetting['player.highQuality'], musicInfo)
   let toggleMusicInfo = ('progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo).meta.toggleMusicInfo
 
+  // 记录本次自动换源命中的源, 成功后落库
+  let toggledSourceInfo: LX.Music.MusicInfoOnline | null = null
+
   return (toggleMusicInfo ? getMusicUrl({
     musicInfo: toggleMusicInfo,
     isRefresh,
@@ -103,11 +121,15 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
       isRefresh,
       onToggleSource(mInfo) {
         if (diffCurrentMusicInfo(musicInfo)) return
+        if (mInfo) toggledSourceInfo = mInfo
         setAllStatus(window.i18n.t('toggle_source_try'))
       },
     })
   }).then(url => {
     if (window.lx.isPlayedStop || diffCurrentMusicInfo(musicInfo)) return null
+
+    // 自动换源成功, 持久化换源信息使下次播放直接使用该源
+    if (toggledSourceInfo) saveToggleMusicInfo(musicInfo, toggledSourceInfo)
 
     return url
   // eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -133,6 +155,15 @@ export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
   void getMusicPlayUrl(musicInfo, isRefresh).then((url) => {
     if (!url) return
     setResource(url)
+    // 设置当前播放音质
+    if (musicInfo === playMusicInfo.musicInfo) {
+      if ('progress' in musicInfo) {
+        setMusicInfo({ quality: musicInfo.metadata.quality })
+      } else if (musicInfo.source != 'local') {
+        const q = getPlayQuality(appSetting['player.playQuality'], musicInfo)
+        setMusicInfo({ quality: q })
+      }
+    }
   }).catch((err: any) => {
     console.log(err)
     setAllStatus(err.message)
@@ -150,6 +181,14 @@ export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
 const handleRestorePlay = async(restorePlayInfo: LX.Player.SavedPlayInfo) => {
   const musicInfo = playMusicInfo.musicInfo
   if (!musicInfo) return
+
+  // 恢复时设置音质
+  if ('progress' in musicInfo) {
+    setMusicInfo({ quality: musicInfo.metadata.quality })
+  } else if (musicInfo.source != 'local') {
+    const q = getPlayQuality(appSetting['player.playQuality'], musicInfo as LX.Music.MusicInfoOnline)
+    setMusicInfo({ quality: q })
+  }
 
   setImmediate(() => {
     if (musicInfo.id != playMusicInfo.musicInfo?.id) return

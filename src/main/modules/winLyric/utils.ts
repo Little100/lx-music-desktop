@@ -84,6 +84,18 @@ export const watchConfigKeys = [
   'player.isSwapLyricTranslationAndRoma',
   'player.isPlayLxlrc',
   'player.playbackRate',
+  'player.audioVisualization',
+  'player.audioVisualization.fftSize',
+  'player.audioVisualization.smoothing',
+  'player.audioVisualization.heightScale',
+  'player.audioVisualization.opacity',
+  'player.audioVisualization.showBars',
+  'player.audioVisualization.showWave',
+  'player.audioVisualization.useLogScale',
+  'player.audioVisualization.amplitudeScale',
+  'player.audioVisualization.barCount',
+  'player.audioVisualization.barWidth',
+  'player.audioVisualization.centerMirror',
 ] satisfies Array<keyof LX.AppSetting>
 
 export const buildLyricConfig = (appSetting: Partial<LX.AppSetting>): Partial<LX.DesktopLyric.Config> => {

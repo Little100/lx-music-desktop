@@ -2,6 +2,7 @@
 transition(enter-active-class="animated slideInRight" leave-active-class="animated slideOutDown" @after-enter="handleAfterEnter" @after-leave="handleAfterLeave")
   div(v-if="isShowPlayerDetail" :class="[$style.container, { fullscreen: isFullscreen }]" @contextmenu="handleContextMenu")
     div(:class="$style.bg")
+    div(v-if="musicInfo.pic" :class="$style.ambientBg" :style="ambientBgStyle")
     //- div(:class="$style.bg" :style="bgStyle")
     //- div(:class="$style.bg2")
     ControlBtnsLeftHeader(v-if="appSetting['common.controlBtnPosition'] == 'left'")
@@ -15,6 +16,7 @@ transition(enter-active-class="animated slideInRight" leave-active-class="animat
             p {{ $t('player__music_name') }}{{ musicInfo.name }}
             p {{ $t('player__music_singer') }}{{ musicInfo.singer }}
             p(v-if="musicInfo.album") {{ $t('player__music_album') }}{{ musicInfo.album }}
+            p(v-if="musicInfo.quality") {{ $t('player__music_quality') }}{{ formatQuality(musicInfo.quality) }}
 
       transition(enter-active-class="animated fadeIn" leave-active-class="animated fadeOut")
         LyricPlayer(v-if="visibled")
@@ -27,7 +29,8 @@ transition(enter-active-class="animated slideInRight" leave-active-class="animat
 
 
 <script>
-import { ref, watch } from '@common/utils/vueTools'
+import { ref, watch, computed, onBeforeUnmount } from '@common/utils/vueTools'
+import { parseRGBA, toRGBAString, animateColorTransition, extractColorsFromImage } from '@common/utils/colorInterp'
 import { isFullscreen } from '@renderer/store'
 import {
   isShowPlayerDetail,
@@ -60,6 +63,45 @@ export default {
   },
   setup() {
     const visibled = ref(false)
+
+    // 全屏氛围光背景
+    const ambientPrimary = ref('rgba(0, 0, 0, 0)')
+    const ambientSecondary = ref('rgba(0, 0, 0, 0)')
+    const ambientTertiary = ref('rgba(0, 0, 0, 0)')
+    let cancelAmbientAnim = null
+
+    const ambientBgStyle = computed(() => ({
+      background: `
+        radial-gradient(ellipse at 20% 30%, ${ambientPrimary.value}, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, ${ambientSecondary.value}, transparent 50%),
+        radial-gradient(ellipse at 50% 100%, ${ambientTertiary.value}, transparent 60%)
+      `,
+    }))
+
+    watch(() => musicInfo.pic, async(pic) => {
+      if (!pic) return
+      const colors = await extractColorsFromImage(pic, { size: 32, regions: 'multi' })
+      const oldColors = [
+        parseRGBA(ambientPrimary.value),
+        parseRGBA(ambientSecondary.value),
+        parseRGBA(ambientTertiary.value),
+      ]
+      // 取消之前未完成的动画
+      if (cancelAmbientAnim) cancelAmbientAnim()
+      cancelAmbientAnim = animateColorTransition(
+        oldColors, colors, 1200,
+        (interpolated) => {
+          ambientPrimary.value = toRGBAString(interpolated[0])
+          ambientSecondary.value = toRGBAString(interpolated[1])
+          ambientTertiary.value = toRGBAString(interpolated[2])
+        },
+        () => { cancelAmbientAnim = null },
+      )
+    }, { immediate: true })
+
+    onBeforeUnmount(() => {
+      if (cancelAmbientAnim) cancelAmbientAnim()
+    })
 
     let clickTime = 0
 
@@ -99,6 +141,7 @@ export default {
 
 
     return {
+      ambientBgStyle,
       appSetting,
       playMusicInfo,
       isShowPlayerDetail,
@@ -111,6 +154,11 @@ export default {
       handleAfterLeave,
       visibled,
       isFullscreen,
+      formatQuality(quality) {
+        if (!quality) return ''
+        if (quality == 'flac24bit') return 'FLAC 24bit'
+        return quality.toUpperCase()
+      },
       fullscreenExit() {
         void setFullScreen(false).then((fullscreen) => {
           isFullscreen.value = fullscreen
@@ -189,6 +237,14 @@ export default {
     height: 100%;
     background-color: var(--color-main-background);
   }
+}
+.ambientBg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.55;
+  filter: blur(80px) saturate(1.6);
+  pointer-events: none;
 }
 // .bg2 {
 //   position: absolute;

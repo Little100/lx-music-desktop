@@ -32,6 +32,14 @@ module.exports = merge(baseConfig, {
           from: path.join(__dirname, '../../src/common/theme/images/*').replace(/\\/g, '/'),
           to: path.join(__dirname, '../../dist/theme_images/[name][ext]'),
         },
+        {
+          from: path.join(__dirname, '../../src/static/builtin-sources/*').replace(/\\/g, '/'),
+          to: path.join(__dirname, '../../dist/static/builtin-sources/[name][ext]'),
+        },
+        {
+          from: path.join(__dirname, '../../native/visualizer/visualizer.win32-x64.node'),
+          to: path.join(__dirname, '../../dist/visualizer.win32-x64.node'),
+        },
       ],
     }),
     new webpack.DefinePlugin({

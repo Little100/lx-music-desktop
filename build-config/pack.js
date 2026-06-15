@@ -8,6 +8,8 @@ const Spinnies = require('spinnies')
 const mainConfig = './main/webpack.config.prod'
 const rendererConfig = './renderer/webpack.config.prod'
 const rendererLyricConfig = './renderer-lyric/webpack.config.prod'
+const rendererAchievementConfig = './renderer-achievement/webpack.config.prod'
+const rendererDynamicIslandConfig = './renderer-dynamic-island/webpack.config.prod'
 const rendererScriptConfig = './renderer-scripts/webpack.config.prod'
 
 const errorLog = chalk.bgRed.white(' ERROR ') + ' '
@@ -24,6 +26,8 @@ function build() {
   spinners.add('main', { text: 'main building' })
   spinners.add('renderer', { text: 'renderer building' })
   spinners.add('renderer-lyric', { text: 'renderer-lyric building' })
+  spinners.add('renderer-achievement', { text: 'renderer-achievement building' })
+  spinners.add('renderer-dynamic-island', { text: 'renderer-dynamic-island building' })
   spinners.add('renderer-scripts', { text: 'renderer-scripts building' })
   let results = ''
 
@@ -66,6 +70,24 @@ function build() {
     }).catch(err => {
       spinners.fail('renderer-lyric', { text: 'renderer-lyric build fail :(' })
       console.log(`\n  ${errorLog}failed to build renderer-lyric process`)
+      console.error(`\n${err}\n`)
+      process.exit(1)
+    }),
+    pack(rendererAchievementConfig).then(result => {
+      results += result + '\n\n'
+      spinners.succeed('renderer-achievement', { text: 'renderer-achievement build success!' })
+    }).catch(err => {
+      spinners.fail('renderer-achievement', { text: 'renderer-achievement build fail :(' })
+      console.log(`\n  ${errorLog}failed to build renderer-achievement process`)
+      console.error(`\n${err}\n`)
+      process.exit(1)
+    }),
+    pack(rendererDynamicIslandConfig).then(result => {
+      results += result + '\n\n'
+      spinners.succeed('renderer-dynamic-island', { text: 'renderer-dynamic-island build success!' })
+    }).catch(err => {
+      spinners.fail('renderer-dynamic-island', { text: 'renderer-dynamic-island build fail :(' })
+      console.log(`\n  ${errorLog}failed to build renderer-dynamic-island process`)
       console.error(`\n${err}\n`)
       process.exit(1)
     }),

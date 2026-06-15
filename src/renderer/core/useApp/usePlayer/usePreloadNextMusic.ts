@@ -4,8 +4,9 @@ import { playProgress } from '@renderer/store/player/playProgress'
 import { musicInfo } from '@renderer/store/player/state'
 // import { getList } from '@renderer/store/utils'
 import { getNextPlayMusicInfo, resetRandomNextMusicInfo } from '@renderer/core/player'
-import { getMusicUrl } from '@renderer/core/music'
+import { getMusicUrl, getPicPath } from '@renderer/core/music'
 import { appSetting } from '@renderer/store/setting'
+import { sendDesktopLyricInfo } from '@renderer/core/lyric'
 
 let audio: HTMLAudioElement
 const initAudio = () => {
@@ -56,6 +57,10 @@ const resetPreloadInfo = () => {
   preloadMusicInfo.info = null
   preloadMusicInfo.isLoading = false
 }
+
+// 是否已发送过即将切歌通知(每首歌只发一次)
+let nextSongNotified = false
+
 const preloadNextMusicUrl = async(curTime: number) => {
   if (preloadMusicInfo.isLoading || curTime - preloadMusicInfo.preProgress < 3) return
   preloadMusicInfo.isLoading = true
@@ -63,6 +68,25 @@ const preloadNextMusicUrl = async(curTime: number) => {
   const info = await getNextPlayMusicInfo()
   if (info) {
     preloadMusicInfo.info = info
+    // 通知灵动岛即将播放的歌曲(含封面)
+    if (!nextSongNotified) {
+      nextSongNotified = true
+      const mi = info.musicInfo
+      const name = 'name' in mi ? mi.name : ''
+      const singer = 'singer' in mi ? mi.singer : ''
+      // 异步获取封面后一起发送
+      void getPicPath({ musicInfo: mi }).then(pic => {
+        sendDesktopLyricInfo({
+          action: 'set_next_song',
+          data: { name, singer, pic },
+        } as any)
+      }).catch(() => {
+        sendDesktopLyricInfo({
+          action: 'set_next_song',
+          data: { name, singer, pic: '' },
+        } as any)
+      })
+    }
     const url = await getMusicUrl({ musicInfo: info.musicInfo }).catch(() => '')
     if (url) {
       console.log('preload url', url)
@@ -85,6 +109,7 @@ export default () => {
 
   const handleSetPlayInfo = () => {
     resetPreloadInfo()
+    nextSongNotified = false
   }
 
   watch(() => appSetting['player.togglePlayMethod'], () => {
