@@ -24,6 +24,8 @@ export const setting = shallowReactive<LX.AppSetting>({
   'dynamicIsland.lyricMode': 'original',
   'dynamicIsland.pausedOpacity': false,
   'dynamicIsland.font': '',
+  'dynamicIsland.ambientMode': 'off',
+  'dynamicIsland.ambientLevel': 'medium',
   'common.langId': 'zh-cn',
   'player.isShowLyricTranslation': false,
   'player.isShowLyricRoma': false,

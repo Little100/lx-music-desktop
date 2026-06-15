@@ -371,6 +371,16 @@ declare global {
        */
       'playDetail.isDelayScroll': boolean
 
+      /**
+       * 播放详情页氛围光动态模式
+       */
+      'playDetail.ambientMode': 'off' | 'drift' | 'pulse' | 'rhythm' | 'combined'
+
+      /**
+       * 播放详情页氛围光性能等级
+       */
+      'playDetail.ambientLevel': 'low' | 'medium' | 'high'
+
 
       /**
        * 是否启用桌面歌词
@@ -857,6 +867,16 @@ declare global {
        * 灵动岛暂停时降低透明度
        */
       'dynamicIsland.pausedOpacity': boolean
+
+      /**
+       * 灵动岛氛围光动态模式
+       */
+      'dynamicIsland.ambientMode': 'off' | 'drift' | 'pulse' | 'rhythm' | 'combined'
+
+      /**
+       * 灵动岛氛围光性能等级
+       */
+      'dynamicIsland.ambientLevel': 'low' | 'medium' | 'high'
 
       /**
        * 灵动岛字体

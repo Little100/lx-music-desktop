@@ -191,6 +191,7 @@
 <script>
 import { ref, computed, watch, onMounted, onBeforeUnmount, reactive } from '@common/utils/vueTools'
 import { parseRGBA, toRGBAString, lerpRGBA, animateColorTransition, extractColorsFromImage, easeOutQuart } from '@common/utils/colorInterp'
+import { createAmbientAnimation } from '@common/utils/ambientAnimation'
 import { setting, musicInfo, isPlay, uiState, lyricState, playTime, lyricLineTimes, lineProgress, nextSongInfo } from '@island/store/state'
 import { setExpanded, setShowInfo, setMouseInside, setDocked } from '@island/store/action'
 import { useEvent, getAnalyserDataArray } from '@island/core/mainWindowChannel'
@@ -275,6 +276,13 @@ export default {
       // 展开状态的线谱
       if (visCtxExpanded && visWExpanded && visHExpanded && uiState.isExpanded) {
         drawBarsSymmetric(visCtxExpanded, dataArray, visWExpanded, visHExpanded)
+      }
+      // 提取音频能量供律动模式使用
+      if (dataArray && dataArray.length > 0) {
+        let sum = 0
+        const len = Math.min(dataArray.length, Math.floor(dataArray.length * 0.5))
+        for (let i = 0; i < len; i++) sum += dataArray[i]
+        currentAudioEnergy = sum / (len * 255)
       }
       animFrameId = null
       if (isPlaying) animFrameId = window.requestAnimationFrame(getAnalyserDataArray)
@@ -813,8 +821,16 @@ export default {
     const ambientColor = ref('rgba(80, 80, 100, 0.5)')
     const ambientColor2 = ref('rgba(40, 40, 60, 0.4)')
     const ambientCenterX = ref(25)
+    const ambientOffsets = ref([{ x: 0, y: 0 }, { x: 0, y: 0 }])
+    const ambientOpacityScale = ref(1)
     let ambientImg = null
     let cancelAmbientAnim = null
+    let ambientAnimController = null
+    let lastExtractedColors = [parseRGBA('rgba(80, 80, 100, 0.5)'), parseRGBA('rgba(40, 40, 60, 0.4)')]
+
+    // 当前帧音频能量(供律动模式使用)
+    let currentAudioEnergy = 0
+    const getAudioEnergy = () => currentAudioEnergy
 
     // 提取封面颜色(仅提取, 不直接赋值, 供动画使用)
     const extractAmbientColorRaw = (src) => {
@@ -825,6 +841,9 @@ export default {
     const applyAmbientColors = (colors) => {
       ambientColor.value = toRGBAString(colors[0])
       ambientColor2.value = toRGBAString(colors[1])
+      lastExtractedColors = colors
+      // 同步到动态动画引擎
+      if (ambientAnimController) ambientAnimController.updateColors(colors)
     }
 
     // 带飞行跟随的颜色过渡动画
@@ -854,7 +873,12 @@ export default {
           ambientColor.value = toRGBAString(interpolated[0])
           ambientColor2.value = toRGBAString(interpolated[1])
         },
-        () => { cancelAmbientAnim = null },
+        () => {
+          cancelAmbientAnim = null
+          lastExtractedColors = targetColors
+          // 过渡完成后同步到动态动画引擎
+          if (ambientAnimController) ambientAnimController.updateColors(targetColors)
+        },
       )
 
       // 包装 cancel 使其也取消中心点动画
@@ -863,6 +887,27 @@ export default {
         originalCancel()
         if (centerRafId) cancelAnimationFrame(centerRafId)
       }
+    }
+
+    // 启动/切换动态氛围光动画
+    const initAmbientDynamic = () => {
+      if (ambientAnimController) {
+        ambientAnimController.cancel()
+        ambientAnimController = null
+      }
+      const mode = setting['dynamicIsland.ambientMode'] || 'off'
+      if (mode === 'off') return
+      const level = setting['dynamicIsland.ambientLevel'] || 'medium'
+      ambientAnimController = createAmbientAnimation(
+        mode, level, lastExtractedColors,
+        (data) => {
+          ambientColor.value = data.colors[0] || ambientColor.value
+          ambientColor2.value = data.colors[1] || ambientColor2.value
+          ambientOffsets.value = data.offsets
+          ambientOpacityScale.value = data.opacityScale
+        },
+        getAudioEnergy,
+      )
     }
 
     // 监听封面变化
@@ -877,9 +922,23 @@ export default {
       }
     }, { immediate: true })
 
-    const ambientStyle = computed(() => ({
-      background: `radial-gradient(circle at ${ambientCenterX.value}% 20%, ${ambientColor.value}, transparent 60%), radial-gradient(circle at ${100 - ambientCenterX.value * 0.25}% 80%, ${ambientColor2.value}, transparent 65%)`,
-    }))
+    // 监听动态氛围光设置变化
+    watch(() => setting['dynamicIsland.ambientMode'], () => { initAmbientDynamic() })
+    watch(() => setting['dynamicIsland.ambientLevel'], () => {
+      if (ambientAnimController) {
+        ambientAnimController.updateLevel(setting['dynamicIsland.ambientLevel'] || 'medium')
+      }
+    })
+
+    const ambientStyle = computed(() => {
+      const ox0 = ambientOffsets.value[0]?.x || 0
+      const oy0 = ambientOffsets.value[0]?.y || 0
+      const ox1 = ambientOffsets.value[1]?.x || 0
+      const oy1 = ambientOffsets.value[1]?.y || 0
+      return {
+        background: `radial-gradient(circle at ${ambientCenterX.value + ox0}% ${20 + oy0}%, ${ambientColor.value}, transparent 60%), radial-gradient(circle at ${100 - ambientCenterX.value * 0.25 + ox1}% ${80 + oy1}%, ${ambientColor2.value}, transparent 65%)`,
+      }
+    })
 
     const handleCoverError = (e) => {
       e.target.style.display = 'none'
@@ -891,6 +950,7 @@ export default {
       initVisCanvas()
       sendConnectMainWindowEvent()
       startBoundsReport()
+      initAmbientDynamic()
       if (isPlay.value) {
         handlePlay()
         startTimeInterpolation()
@@ -925,6 +985,8 @@ export default {
     onBeforeUnmount(() => {
       handlePause()
       stopTimeInterpolation()
+      if (ambientAnimController) ambientAnimController.cancel()
+      if (cancelAmbientAnim) cancelAmbientAnim()
       if (resizeObserver) resizeObserver.disconnect()
       if (reportRafId) cancelAnimationFrame(reportRafId)
       if (hoverTimer) clearTimeout(hoverTimer)

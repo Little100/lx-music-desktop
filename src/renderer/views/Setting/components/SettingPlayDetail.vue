@@ -20,6 +20,22 @@ dd
   div
     .gap-top
       base-checkbox(id="setting_play_detail_audio_visualization_enable" :model-value="appSetting['player.audioVisualization']" :label="$t('setting__play_detail_audio_visualization_enable')" @update:model-value="updateSetting({'player.audioVisualization': $event})")
+
+dd
+  h3#play_detail_ambient {{ $t('setting__play_detail_ambient_mode') }}
+  div
+    base-checkbox.gap-left(id="setting_play_detail_ambient_off" :model-value="appSetting['playDetail.ambientMode']" need value="off" :label="$t('setting__play_detail_ambient_mode_off')" @update:model-value="updateSetting({ 'playDetail.ambientMode': $event })")
+    base-checkbox.gap-left(id="setting_play_detail_ambient_drift" :model-value="appSetting['playDetail.ambientMode']" need value="drift" :label="$t('setting__play_detail_ambient_mode_drift')" @update:model-value="updateSetting({ 'playDetail.ambientMode': $event })")
+    base-checkbox.gap-left(id="setting_play_detail_ambient_pulse" :model-value="appSetting['playDetail.ambientMode']" need value="pulse" :label="$t('setting__play_detail_ambient_mode_pulse')" @update:model-value="updateSetting({ 'playDetail.ambientMode': $event })")
+    base-checkbox.gap-left(id="setting_play_detail_ambient_rhythm" :model-value="appSetting['playDetail.ambientMode']" need value="rhythm" :label="$t('setting__play_detail_ambient_mode_rhythm')" @update:model-value="updateSetting({ 'playDetail.ambientMode': $event })")
+    base-checkbox.gap-left(id="setting_play_detail_ambient_combined" :model-value="appSetting['playDetail.ambientMode']" need value="combined" :label="$t('setting__play_detail_ambient_mode_combined')" @update:model-value="updateSetting({ 'playDetail.ambientMode': $event })")
+  div(v-if="appSetting['playDetail.ambientMode'] !== 'off'")
+    .gap-top
+      span {{ $t('setting__play_detail_ambient_level') }}
+    div
+      base-checkbox.gap-left(id="setting_play_detail_ambient_level_low" :model-value="appSetting['playDetail.ambientLevel']" need value="low" :label="$t('setting__play_detail_ambient_level_low')" @update:model-value="updateSetting({ 'playDetail.ambientLevel': $event })")
+      base-checkbox.gap-left(id="setting_play_detail_ambient_level_medium" :model-value="appSetting['playDetail.ambientLevel']" need value="medium" :label="$t('setting__play_detail_ambient_level_medium')" @update:model-value="updateSetting({ 'playDetail.ambientLevel': $event })")
+      base-checkbox.gap-left(id="setting_play_detail_ambient_level_high" :model-value="appSetting['playDetail.ambientLevel']" need value="high" :label="$t('setting__play_detail_ambient_level_high')" @update:model-value="updateSetting({ 'playDetail.ambientLevel': $event })")
   div(v-if="appSetting['player.audioVisualization']")
     .gap-top
       div

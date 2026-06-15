@@ -25,6 +25,8 @@ const watchConfigKeys: Array<keyof LX.AppSetting> = [
   'dynamicIsland.lyricMode',
   'dynamicIsland.pausedOpacity',
   'dynamicIsland.font',
+  'dynamicIsland.ambientMode',
+  'dynamicIsland.ambientLevel',
   'common.langId',
   'player.isShowLyricTranslation',
   'player.isShowLyricRoma',

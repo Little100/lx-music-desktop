@@ -29,8 +29,9 @@ transition(enter-active-class="animated slideInRight" leave-active-class="animat
 
 
 <script>
-import { ref, watch, computed, onBeforeUnmount } from '@common/utils/vueTools'
+import { ref, watch, computed, onMounted, onBeforeUnmount } from '@common/utils/vueTools'
 import { parseRGBA, toRGBAString, animateColorTransition, extractColorsFromImage } from '@common/utils/colorInterp'
+import { createAmbientAnimation } from '@common/utils/ambientAnimation'
 import { isFullscreen } from '@renderer/store'
 import {
   isShowPlayerDetail,
@@ -68,15 +69,51 @@ export default {
     const ambientPrimary = ref('rgba(0, 0, 0, 0)')
     const ambientSecondary = ref('rgba(0, 0, 0, 0)')
     const ambientTertiary = ref('rgba(0, 0, 0, 0)')
+    const ambientOffsets = ref([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }])
+    const ambientOpacityScale = ref(1)
     let cancelAmbientAnim = null
+    let ambientAnimController = null
+    let lastExtractedColors = [
+      parseRGBA('rgba(0, 0, 0, 0)'),
+      parseRGBA('rgba(0, 0, 0, 0)'),
+      parseRGBA('rgba(0, 0, 0, 0)'),
+    ]
 
-    const ambientBgStyle = computed(() => ({
-      background: `
-        radial-gradient(ellipse at 20% 30%, ${ambientPrimary.value}, transparent 50%),
-        radial-gradient(ellipse at 80% 70%, ${ambientSecondary.value}, transparent 50%),
-        radial-gradient(ellipse at 50% 100%, ${ambientTertiary.value}, transparent 60%)
-      `,
-    }))
+    // 音频能量(供律动模式)
+    let currentAudioEnergy = 0
+    const getAudioEnergy = () => currentAudioEnergy
+
+    // 从音频可视化获取能量值
+    const updateAudioEnergy = () => {
+      try {
+        const analyser = window.__lx_audio_analyser__
+        if (analyser) {
+          const data = new Uint8Array(analyser.frequencyBinCount)
+          analyser.getByteFrequencyData(data)
+          const len = Math.min(data.length, Math.floor(data.length * 0.5))
+          let sum = 0
+          for (let i = 0; i < len; i++) sum += data[i]
+          currentAudioEnergy = sum / (len * 255)
+        }
+      } catch (_e) {}
+    }
+    let energyTimer = null
+
+    const ambientBgStyle = computed(() => {
+      const ox0 = ambientOffsets.value[0]?.x || 0
+      const oy0 = ambientOffsets.value[0]?.y || 0
+      const ox1 = ambientOffsets.value[1]?.x || 0
+      const oy1 = ambientOffsets.value[1]?.y || 0
+      const ox2 = ambientOffsets.value[2]?.x || 0
+      const oy2 = ambientOffsets.value[2]?.y || 0
+      return {
+        background: `
+          radial-gradient(ellipse at ${20 + ox0}% ${30 + oy0}%, ${ambientPrimary.value}, transparent 50%),
+          radial-gradient(ellipse at ${80 + ox1}% ${70 + oy1}%, ${ambientSecondary.value}, transparent 50%),
+          radial-gradient(ellipse at ${50 + ox2}% ${100 + oy2}%, ${ambientTertiary.value}, transparent 60%)
+        `,
+      }
+    })
 
     watch(() => musicInfo.pic, async(pic) => {
       if (!pic) return
@@ -95,12 +132,63 @@ export default {
           ambientSecondary.value = toRGBAString(interpolated[1])
           ambientTertiary.value = toRGBAString(interpolated[2])
         },
-        () => { cancelAmbientAnim = null },
+        () => {
+          cancelAmbientAnim = null
+          lastExtractedColors = colors
+          if (ambientAnimController) ambientAnimController.updateColors(colors)
+        },
       )
     }, { immediate: true })
 
+    // 启动/切换动态氛围光
+    const initAmbientDynamic = () => {
+      if (ambientAnimController) {
+        ambientAnimController.cancel()
+        ambientAnimController = null
+      }
+      if (energyTimer) { clearInterval(energyTimer); energyTimer = null }
+      const mode = appSetting['playDetail.ambientMode'] || 'off'
+      if (mode === 'off') return
+      const level = appSetting['playDetail.ambientLevel'] || 'medium'
+      // 律动模式需要定期采样音频能量
+      if (mode === 'rhythm' || mode === 'combined') {
+        energyTimer = setInterval(updateAudioEnergy, 50)
+      }
+      ambientAnimController = createAmbientAnimation(
+        mode, level, lastExtractedColors,
+        (data) => {
+          ambientPrimary.value = data.colors[0] || ambientPrimary.value
+          ambientSecondary.value = data.colors[1] || ambientSecondary.value
+          ambientTertiary.value = data.colors[2] || ambientTertiary.value
+          ambientOffsets.value = data.offsets
+          ambientOpacityScale.value = data.opacityScale
+        },
+        getAudioEnergy,
+      )
+    }
+
+    // 监听设置变化
+    watch(() => appSetting['playDetail.ambientMode'], () => { initAmbientDynamic() })
+    watch(() => appSetting['playDetail.ambientLevel'], () => {
+      if (ambientAnimController) {
+        ambientAnimController.updateLevel(appSetting['playDetail.ambientLevel'] || 'medium')
+      }
+    })
+
+    // 页面可见时启动动态动画
+    watch(() => isShowPlayerDetail.value, (visible) => {
+      if (visible) {
+        initAmbientDynamic()
+      } else {
+        if (ambientAnimController) { ambientAnimController.cancel(); ambientAnimController = null }
+        if (energyTimer) { clearInterval(energyTimer); energyTimer = null }
+      }
+    })
+
     onBeforeUnmount(() => {
       if (cancelAmbientAnim) cancelAmbientAnim()
+      if (ambientAnimController) ambientAnimController.cancel()
+      if (energyTimer) clearInterval(energyTimer)
     })
 
     let clickTime = 0

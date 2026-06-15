@@ -123,6 +123,22 @@ dd
         :min="0"
         :max="5000"
         @change="updateSetting({ 'dynamicIsland.mouseLeaveDelay': Math.round($event) })")
+
+dd
+  h3#dynamic_island_ambient {{ $t('setting__dynamic_island_ambient_mode') }}
+  div
+    base-checkbox.gap-left(id="setting_dynamic_island_ambient_off" :model-value="appSetting['dynamicIsland.ambientMode']" need value="off" :label="$t('setting__dynamic_island_ambient_mode_off')" @update:model-value="updateSetting({ 'dynamicIsland.ambientMode': $event })")
+    base-checkbox.gap-left(id="setting_dynamic_island_ambient_drift" :model-value="appSetting['dynamicIsland.ambientMode']" need value="drift" :label="$t('setting__dynamic_island_ambient_mode_drift')" @update:model-value="updateSetting({ 'dynamicIsland.ambientMode': $event })")
+    base-checkbox.gap-left(id="setting_dynamic_island_ambient_pulse" :model-value="appSetting['dynamicIsland.ambientMode']" need value="pulse" :label="$t('setting__dynamic_island_ambient_mode_pulse')" @update:model-value="updateSetting({ 'dynamicIsland.ambientMode': $event })")
+    base-checkbox.gap-left(id="setting_dynamic_island_ambient_rhythm" :model-value="appSetting['dynamicIsland.ambientMode']" need value="rhythm" :label="$t('setting__dynamic_island_ambient_mode_rhythm')" @update:model-value="updateSetting({ 'dynamicIsland.ambientMode': $event })")
+    base-checkbox.gap-left(id="setting_dynamic_island_ambient_combined" :model-value="appSetting['dynamicIsland.ambientMode']" need value="combined" :label="$t('setting__dynamic_island_ambient_mode_combined')" @update:model-value="updateSetting({ 'dynamicIsland.ambientMode': $event })")
+  div(v-if="appSetting['dynamicIsland.ambientMode'] !== 'off'")
+    .gap-top
+      span {{ $t('setting__dynamic_island_ambient_level') }}
+    div
+      base-checkbox.gap-left(id="setting_dynamic_island_ambient_level_low" :model-value="appSetting['dynamicIsland.ambientLevel']" need value="low" :label="$t('setting__dynamic_island_ambient_level_low')" @update:model-value="updateSetting({ 'dynamicIsland.ambientLevel': $event })")
+      base-checkbox.gap-left(id="setting_dynamic_island_ambient_level_medium" :model-value="appSetting['dynamicIsland.ambientLevel']" need value="medium" :label="$t('setting__dynamic_island_ambient_level_medium')" @update:model-value="updateSetting({ 'dynamicIsland.ambientLevel': $event })")
+      base-checkbox.gap-left(id="setting_dynamic_island_ambient_level_high" :model-value="appSetting['dynamicIsland.ambientLevel']" need value="high" :label="$t('setting__dynamic_island_ambient_level_high')" @update:model-value="updateSetting({ 'dynamicIsland.ambientLevel': $event })")
 </template>
 
 <script>

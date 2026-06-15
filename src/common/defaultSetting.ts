@@ -82,6 +82,8 @@ const defaultSetting: LX.AppSetting = {
   'playDetail.style.fontSize': 140,
   'playDetail.style.align': 'center',
   'playDetail.isDelayScroll': true,
+  'playDetail.ambientMode': 'off',
+  'playDetail.ambientLevel': 'medium',
 
   'desktopLyric.enable': false,
   'desktopLyric.isLock': false,
@@ -192,6 +194,8 @@ const defaultSetting: LX.AppSetting = {
   'dynamicIsland.lyricMode': 'original',
   'dynamicIsland.pausedOpacity': false,
   'dynamicIsland.font': '',
+  'dynamicIsland.ambientMode': 'off',
+  'dynamicIsland.ambientLevel': 'medium',
 
   'achievement.font': '',
   'achievement.enable': false,
